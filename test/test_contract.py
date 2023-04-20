@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from src.contract import *
 from src.enums import *
@@ -36,6 +37,6 @@ class TestPayoff:
         contract = EuropeanContract(self.underlying, PutCallFwd.CALL, strike, self.expiry)
         assert max(spot - strike, 0) == contract.payoff(spot)
 
-    def test_call_payoff(self, spot, strike):
+    def test_put_payoff(self, spot, strike):
         contract = EuropeanContract(self.underlying, PutCallFwd.PUT, strike, self.expiry)
         assert max(strike - spot, 0) == contract.payoff(spot)
