@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enums import *
+from src.enums import *
 
 
 class MarketData:
