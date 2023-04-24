@@ -24,19 +24,17 @@ class MarketData:
         for stock in Stock:
             name = stock.value
             if name not in data.index:
-                raise ValueError('Missing initial spot for underlying: {0}'.format(name))
+                raise ValueError(f'Missing initial spot for underlying: {name}')
             MarketData.__initial_spot[stock] = data.at[name, 'initial_spot']
 
     @staticmethod
     def __load_vol_grid() -> None:
         for stock in Stock:
             name = stock.value
-            path = os.path.join(MarketData.__MARKET_FOLDER, MarketData.__FILENAME_VOL_GRID.format(und=name.lower()))
+            filename = MarketData.__FILENAME_VOL_GRID.format(und=name.lower())
+            path = os.path.join(MarketData.__MARKET_FOLDER, filename)
             if not os.path.exists(path):
-                raise FileNotFoundError('Volatility grid ({file}) does not exist for underlying: {und}'.format(
-                    file=MarketData.__FILENAME_VOL_GRID.format(und=name.lower()),
-                    und=name
-                ))
+                raise FileNotFoundError(f'Volatility grid ({filename}) does not exist for underlying: {name}')
             data = pd.read_csv(path, header=0, dtype=float)
             points = np.array((data['tenor'], data['moneyness'])).T
             values = np.array(data['value'])
