@@ -1,52 +1,54 @@
 from __future__ import annotations
-import math
 from market_data import MarketData
 from enums import *
 from volgrid import VolGrid
+import numpy as np
+from abc import ABC, abstractmethod
 
-
-class MarketModel:
+class MarketModel(ABC):
     def __init__(self, und: Stock):
         self._und = und
-        self.interest_rate = self.get_rate()
-        self.spot = MarketData.get_initial_spot(self._und)
+        self._interest_rate = MarketData.get_interest_rate()
+        self._initial_spot = MarketData.get_initial_spot(self._und)
+        self._volgrid = MarketData.get_volgrid(self._und)
 
     def get_rate(self) -> float:
+        return self._interest_rate
+
+    def get_initial_spot(self) -> float:
+        return self._initial_spot
+
+    def get_volgrid(self) -> VolGrid:
+        return self._volgrid
+
+    def get_df(self, t: float) -> float:
+        return np.exp(-self.interest_rate * t)
+
+    @abstractmethod
+    def get_simulated_spot(self, t: float, Z: float) -> float:
         pass
-
-    @staticmethod
-    def get_initial_spot() -> float:
-        return MarketData.get_initial_spot()
-
-    @staticmethod
-    def get_volgrid() -> VolGrid:
-        return MarketData.get_volgrid()
-
-    def get_vol(self, exp: float, strike: float) -> float:
-        return self.get_volgrid.get_vol(exp, strike)
-
-    def get_df(self, exp: float) -> float:
-        return math.exp(-self.interest_rate * exp)
-
-    def get_underlying_level_at_exp(self, exp: float, Z: float) -> float:
-        # Calculate stock price at expiry
-        return self.spot * math.exp(
-            (self.interest_rate * exp - 0.5 * self.sigma ** 2 * exp) + (self.vol * Z * math.sqrt(exp)))
 
 
 class BSVolModel(MarketModel):
     def __init__(self, und: Stock):
         super().__init__(und)
-        self.vol = self.get_vol()
 
-    def get_vol(self, exp=1.0, strike=1.0) -> float:
-        return self.get_volgrid.get_vol(exp, strike)
+    def get_vol(self) -> float:
+        return self.get_volgrid.get_vol(1.0, 1.0)
+
+    def get_simulated_spot(self, t: float, Z: float) -> float:
+        return self._initial_spot * np.exp(
+            (self.interest_rate * t - 0.5 * self.get_vol() ** 2 * t) + (self.get_vol() * Z * np.sqrt(t)))
 
 
 class FlatVolModel(MarketModel):
     def __init__(self, und: Stock):
         super().__init__(und)
-        self.vol = self.get_vol()
 
-    def get_vol(self, exp: float, strike: float) -> float:
-        return self.get_volgrid.get_vol(exp, strike)
+    def get_vol(self, t: float, strike: float) -> float:
+        return self.get_volgrid.get_vol(t, strike)
+
+    def get_simulated_spot(self, t: float, strike: float, Z: float) -> float:
+        vol = self.get_vol(t, strike)
+        return self._initial_spot * np.exp(
+            (self.interest_rate * t - 0.5 * vol ** 2 * t) + (vol * Z * np.sqrt(t)))
