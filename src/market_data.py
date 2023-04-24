@@ -10,6 +10,7 @@ class MarketData:
     __MARKET_FOLDER: str = os.path.join(os.path.dirname(__file__), '..', 'mkt')
     __FILENAME_INIT_SPOT: str = 'spot.csv'
     __FILENAME_VOL_GRID: str = 'vol_{und}.csv'
+    __RISK_FREE_RATE: float = 0.05
     __initial_spot: dict[Stock, float] = dict()
     __vol_grid: dict[Stock, VolGrid] = dict()
     __is_initialized: bool = False
@@ -53,6 +54,11 @@ class MarketData:
         if not MarketData.__is_initialized:
             raise ValueError(
                 'Market data is not initialized. Call MarketData.initialize() in the first line after imports.')
+
+    @staticmethod
+    def get_risk_free_rate() -> float:
+        MarketData.__validate()
+        return MarketData.__RISK_FREE_RATE
 
     @staticmethod
     def get_initial_spot() -> dict[Stock, float]:
