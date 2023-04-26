@@ -1,9 +1,17 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from src.enums import *
+from src.contract import *
+from src.model import *
+from src.numerical_method import *
 
 
 class Pricer(ABC):
+    def __init__(self, contract: Contract, model: MarketModel, method: NumericalMethod):
+        self._contract = contract
+        self._model = model
+        self._method = method
+
     @staticmethod
     def get_pricers() -> dict[str, Pricer]:
         return {cls.__name__: cls for cls in Pricer.__subclasses__()}

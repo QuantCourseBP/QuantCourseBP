@@ -12,9 +12,10 @@ class CalcEngine:
     __GENERIC_NUMERICAL_METHODS: list[str] = [
         TreeMethod.__name__,
         PDEMethod.__name__,
-        MonteCarloMethod.__name__
+        MCMethod.__name__
     ]
 
+    # todo: params should be optional due to analytic method
     def __init__(self, contracts: list[Contract], model_name: str, method_name: str, params: Params) -> None:
         self.__contracts: list[Contract] = contracts
         self.__model_name: str = model_name
@@ -38,9 +39,22 @@ class CalcEngine:
         if not isinstance(self.__params, Params):
             raise ValueError(f'Attribute `params` must be a Params objects')
 
-    # todo: to be implemented
     def __create_pricers(self) -> dict[Contract, Pricer]:
-        pass
+        pricers = dict()
+        for contract in self.__contracts:
+            model = globals()[self.__model_name](contract.get_und())
+            if self.__numerical_method_name in self.__GENERIC_NUMERICAL_METHODS:
+                contract = contract.convert_to_generic()
+            contract_name = contract.__class__.__name__.removesuffix('Contract')
+            method_name = self.__numerical_method_name.removesuffix('Method')
+            pricer_name = f'{contract_name}{method_name}Pricer'
+            if self.__numerical_method_name == AnalyticMethod.__name__:
+                pricer = globals()[pricer_name](contract, model)
+            else:
+                numerical_method = globals()[self.__numerical_method_name](model, self.__params)
+                pricer = globals()[pricer_name](contract, model, numerical_method)
+            pricers[contract] = pricer
+        return pricers
 
     def get_pricers(self) -> dict[Contract, Pricer]:
         return self.__pricers
