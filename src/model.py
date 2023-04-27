@@ -1,16 +1,16 @@
 from __future__ import annotations
 from market_data import MarketData
 from enums import *
-from volgrid import VolGrid
+from market_data import VolGrid
 import numpy as np
 from abc import ABC, abstractmethod
 
 class MarketModel(ABC):
     def __init__(self, und: Stock):
         self._und = und
-        self._interest_rate = MarketData.get_interest_rate()
-        self._initial_spot = MarketData.get_initial_spot(self._und)
-        self._volgrid = MarketData.get_volgrid(self._und)
+        self._interest_rate = MarketData.get_risk_free_rate()
+        self._initial_spot = MarketData.get_initial_spot()[self._und]
+        self._volgrid = MarketData.get_vol_grid()[self._und]
 
     def get_rate(self) -> float:
         return self._interest_rate
@@ -50,5 +50,5 @@ class FlatVolModel(MarketModel):
 
     def get_simulated_spot(self, t: float, strike: float, Z: float) -> float:
         vol = self.get_vol(t, strike)
-        return self._initial_spot * np.exp(
+        return np.exp(
             (self.interest_rate * t - 0.5 * vol ** 2 * t) + (vol * Z * np.sqrt(t)))
