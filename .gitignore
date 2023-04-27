@@ -1,3 +1,5 @@
-
 *.ipynb_checkpoints*
-*slides.html
+**/.idea
+**/__pycache__
+*.pyc
+*.patch
