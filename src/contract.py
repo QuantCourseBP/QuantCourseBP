@@ -5,9 +5,11 @@ from statistics import mean
 
 
 class Contract(ABC):
-    def __init__(self, und: Stock, dtype: PutCallFwd, strk: float, exp: float, num_mon: int = 1) -> None:
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float, num_mon: int = 1) -> None:
         self._underlying: Stock = und
         self._derivative_type: PutCallFwd = dtype
+        self._derivative_longshort: LongShort = longshort
+        self.ls = 1 if longshort == 'LONG' else -1
         self._strike: float = strk
         self._expiry: float = exp
         self._num_mon: int = num_mon    # Asian: nr of averaging points; Barrier: nr of monitoring points
@@ -17,6 +19,9 @@ class Contract(ABC):
 
     def get_type(self) -> PutCallFwd:
         return self._derivative_type
+
+    def get_longshort(self) -> LongShort:
+        return self._derivative_longshort
 
     def get_strike(self) -> float:
         return self._strike
@@ -30,11 +35,16 @@ class Contract(ABC):
     @abstractmethod
     def to_dict(self) -> dict[str, any]:
         return {
-            "underlying": self._underlying.value,
-            "type": self._derivative_type.value,
+            "contract": self._contract,
+            "underlying": self._underlying,
+            "type": self._derivative_type,
+            "longshort": self._derivative_longshort,
             "strike": self._strike,
             "expiry": self._expiry
         }
+
+    def display(self) -> list[any]:
+        print(self.to_dict())
 
     # @abstractmethod
     # def convert_to_generic(self) -> GenericContract:
@@ -46,6 +56,12 @@ class Contract(ABC):
 
     def _raise_incorrect_derivative_type(self):
         raise TypeError(f'Derivative type of {type(self).__name__} must be CALL or PUT')
+
+    def _raise_incorrect_barrier_updown_type(self):
+        raise TypeError(f'Updown parameter of {type(self).__name__} must be UP or DOWN')
+
+    def _raise_incorrect_barrier_inout_type(self):
+        raise TypeError(f'Inout parameter of {type(self).__name__} must be IN or OUT')
 
 
 class VanillaContract(Contract):
@@ -65,70 +81,78 @@ class VanillaContract(Contract):
 
 
 class ForwardContract(VanillaContract):
-    def __init__(self, und: Stock, strk: float, exp: float) -> None:
-        super().__init__(und, PutCallFwd.FWD, strk, exp)
+    def __init__(self, und: Stock, longshort: str, strk: float, exp: float) -> None:
+        super().__init__(und, PutCallFwd.FWD, longshort, strk, exp)
+        self._contract = 'Forward'
+
 
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
 
     def payoff(self, spot: float) -> float:
-        return spot - self._strike
+        return self.ls * (spot - self._strike)
 
 
-class VanillaOptionContract(VanillaContract):
-    def __init__(self, und: Stock, dtype: PutCallFwd, strk: float, exp: float) -> None:
+class EuropeanContract(VanillaContract):
+
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
-        super().__init__(und, dtype, strk, exp)
+        super().__init__(und, dtype, longshort, strk, exp)
+        self._contract = 'EuropeanOption'
 
-    # @abstractmethod
-    # def convert_to_generic(self) -> GenericContract:
-    #     pass
-
-    @abstractmethod
-    def payoff(self, spot: float) -> float:
-        pass
-
-
-class EuropeanContract(VanillaOptionContract):
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return max(spot - self._strike, 0)
+            return self.ls * max(spot - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return max(self._strike - spot, 0)
+            return self.ls * max(self._strike - spot, 0)
         else:
             self._raise_incorrect_derivative_type()
 
 
-class AmericanContract(VanillaOptionContract):
+class AmericanContract(VanillaContract):
+
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
+        if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
+            self._raise_incorrect_derivative_type()
+        super().__init__(und, dtype, longshort, strk, exp)
+        self._contract = 'AmericanOption'
+
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return max(spot - self._strike, 0)
+            return self.ls * max(spot - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return max(self._strike - spot, 0)
+            return self.ls * max(self._strike - spot, 0)
         else:
             self._raise_incorrect_derivative_type()
 
 
-class EuropeanDigitalContract(VanillaOptionContract):
+class EuropeanDigitalContract(VanillaContract):
+
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
+        if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
+            self._raise_incorrect_derivative_type()
+        super().__init__(und, dtype, longshort, strk, exp)
+        self._contract = 'EuropeanDigitalOption'
+
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return float(spot - self._strike > 0)
+            return self.ls * float(spot - self._strike > 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return float(self._strike - spot > 0)
+            return self.ls * float(self._strike - spot > 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -152,6 +176,12 @@ class PathDependentContract(Contract):
 
 class AsianContract(PathDependentContract):
 
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
+        if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
+            self._raise_incorrect_derivative_type()
+        super().__init__(und, dtype, longshort, strk, exp)
+        self._contract = 'AsianOption'
+
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
@@ -159,24 +189,72 @@ class AsianContract(PathDependentContract):
     def payoff(self, prices_und: float) -> float:
     # TO DO: prices_und to derive from the underlying process using the timeline
         if self._derivative_type == PutCallFwd.CALL:
-            return max(mean(prices_und) - self._strike, 0)
+            return self.ls * max(mean(prices_und) - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return max(self._strike - mean(prices_und), 0)
+            return self.ls * max(self._strike - mean(prices_und), 0)
         else:
             self._raise_incorrect_derivative_type()
 
 
 class EuropeanBarrierContract(PathDependentContract):
 
+    def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float,
+                 barrier: float, updown: UpDown, inout: InOut) -> None:
+        if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
+            self._raise_incorrect_derivative_type()
+        if updown not in [UpDown.UP, UpDown.DOWN]:
+            self._raise_incorrect_barrier_updown_type()
+        if inout not in [InOut.IN, InOut.OUT]:
+            self._raise_incorrect_barrier_inout_type()
+        super().__init__(und, dtype, longshort, strk, exp)
+        self._contract = 'BarrierOption'
+        self._barrier = barrier
+        self._updown = updown
+        self._inout = inout
+
+    def get_barrier(self) -> float:
+        return self._barrier
+
+    def get_updown(self) -> UpDown:
+        return self._updown
+
+    def get_inout(self) -> InOut:
+        return self._inout
+
+    def is_breached(self, prices_und) -> bool:
+        if self._updown == 'UP':
+            return( any([self._barrier <= price for price in prices_und]) )
+        else:
+            return (any([self._barrier >= price for price in prices_und]))
+
+
     # def convert_to_generic(self) -> GenericContract:
     #     # todo: needs to be properly initialized after GenericContract is implemented
     #     return GenericContract()
 
-    def payoff(self, spot: float) -> float:
+    def to_dict(self) -> dict[str, any]:
+        return {
+            "contract": self._contract,
+            "underlying": self._underlying,
+            "type": self._derivative_type,
+            "longshort": self._derivative_longshort,
+            "strike": self._strike,
+            "expiry": self._expiry,
+            "barrier": self._barrier,
+            "updown": self._updown,
+            "inout": self._inout
+        }
+
+    def payoff(self, prices_und: float) -> float:
+    # TO DO: prices_und to derive from the underlying process using the timeline
+
+        mult = (self._inout == 'IN') * self.is_breached(prices_und) + \
+               (self._inout == 'OUT') * (1 - self.is_breached(prices_und))
+
         if self._derivative_type == PutCallFwd.CALL:
-            return max(spot - self._strike, 0)
+            return mult * self.ls * max(prices_und[-1] - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return max(self._strike - spot, 0)
+            return mult * self.ls * max(self._strike - prices_und[-1], 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -196,20 +274,35 @@ class GenericContract(PathDependentContract):
 
 def main():
 
-    trade1 = ForwardContract('Apple', 1, 2)
-    print(trade1.get_und())
-    print(trade1.get_type())
-    print("Strike: {}".format(trade1.get_strike()))
-    print(trade1.payoff(0.5))
-    print(trade1.payoff(1.5))
+    values = [-1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3]
 
-    print("\n")
-    trade2 = AsianContract('Microsoft', 'CALL', 1, 2)
-    print(trade2.get_und())
-    print(trade2.get_type())
-    print("Strike: {}".format(trade2.get_strike()))
-    print(trade2.payoff([1.8, 1.9, 2, 1.9, 2.1]))
-    print(trade2.payoff([0.8, 0.9, 1, 0.9, 1.1]))
+    trade1 = ForwardContract('Apple', 'SHORT', 1, 2)
+    trade1.display()
+    print([trade1.payoff(value) for value in values])
+
+    trade2 = EuropeanContract('OTP', 'CALL', 'LONG', 1, 2)
+    trade2.display()
+    print([trade2.payoff(value) for value in values])
+
+    trade3 = AmericanContract('Tesla', 'CALL', 'LONG', 1, 2)
+    trade3.display()
+    print([trade3.payoff(value) for value in values])
+
+    trade4 = EuropeanDigitalContract('Mol', 'CALL', 'LONG', 1, 2)
+    trade4.display()
+    print([trade4.payoff(value) for value in values])
+
+    trade5 = AsianContract('Microsoft', 'CALL', 'LONG', 0.8, 2)
+    trade5.display()
+    print(trade5.payoff(values))
+
+    trade6 = EuropeanBarrierContract('Deutshe Bank', 'CALL', 'LONG', 1.5, 2, 2.7, "UP", "IN")
+    trade6.display()
+    print(trade6.is_breached([1, 2, 2.5, 2]),
+          trade6.is_breached([1, 2, 3.5, 2]) )
+    print(trade6.payoff(values))
+
+
 
 
 if __name__ == '__main__': main()
