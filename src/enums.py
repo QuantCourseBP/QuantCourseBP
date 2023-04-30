@@ -1,5 +1,13 @@
 from enum import Enum
 
+class ContractType(str, Enum):
+    FORWARD: str = 'FORWARD'
+    EUROPEANOPTION: str = 'EUROPEANOPTION'
+    AMERICANOPTION: str = 'AMERICANOPTION'
+    EUROPEANDIGITALOPTION: str = 'EUROPEANDIGITALOPTION'
+    ASIANOPTION: str = 'ASIANOPTION'
+    EUROPEANBARRIEROPTION: str = 'EUROPEANBARRIEROPTION'
+
 
 class Stock(str, Enum):
     # todo: replace EXAMPLE stocks with meaningful names
