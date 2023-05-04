@@ -4,6 +4,7 @@ from enums import *
 from market_data import VolGrid
 import numpy as np
 from abc import ABC, abstractmethod
+from src.enums import *
 
 class MarketModel(ABC):
     def __init__(self, und: Stock):
@@ -28,6 +29,10 @@ class MarketModel(ABC):
     def get_simulated_spot(self, t: float, Z: float) -> float:
         pass
 
+    @staticmethod
+    def get_models() -> dict[str, MarketModel]:
+        return {cls.__name__: cls for cls in MarketModel.__subclasses__()}
+
 
 class BSVolModel(MarketModel):
     def __init__(self, und: Stock):
@@ -37,7 +42,7 @@ class BSVolModel(MarketModel):
         return self.get_volgrid.get_vol(1.0, 1.0)
 
     def get_simulated_spot(self, t: float, Z: float) -> float:
-        return self._initial_spot * np.exp(
+        return np.exp(
             (self.interest_rate * t - 0.5 * self.get_vol() ** 2 * t) + (self.get_vol() * Z * np.sqrt(t)))
 
 
@@ -52,3 +57,5 @@ class FlatVolModel(MarketModel):
         vol = self.get_vol(t, strike)
         return np.exp(
             (self.interest_rate * t - 0.5 * vol ** 2 * t) + (vol * Z * np.sqrt(t)))
+
+

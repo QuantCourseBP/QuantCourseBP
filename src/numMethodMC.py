@@ -1,3 +1,6 @@
+# This piece of code needs to be integrated to the existing framework...
+raise ImportError('This module will be deleted, please use numerical_method instead.')
+
 import numpy as np
 from scipy.stats import norm
 
