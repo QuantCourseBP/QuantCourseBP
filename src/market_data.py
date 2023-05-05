@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
-from enums import *
+from src.enums import *
 
 
 class MarketData:

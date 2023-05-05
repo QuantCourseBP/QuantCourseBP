@@ -1,3 +1,7 @@
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__),".."))
+sys.path.append(os.path.join(os.path.join(os.path.dirname(__file__),".."),'src'))
+
 import numpy as np
 import pytest
 from src.contract import *

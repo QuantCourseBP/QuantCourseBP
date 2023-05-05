@@ -1,9 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-
-import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__),".."))
-
 from src.enums import *
 from src.contract import *
 from src.model import *
@@ -99,22 +95,3 @@ class GenericPDEPricer(Pricer):
 # todo: to be implemented
 class GenericMCPricer(Pricer):
     pass
-
-if __name__ == "__main__":
-    
-    MarketData.initialize()
-    
-    params1 = TreeParams(1, 2, 1.2, 0.8)
-    model = FlatVolModel(Stock.EXAMPLE1)
-    contract = EuropeanContract(Stock.EXAMPLE1, PutCallFwd.CALL, 1.0, 1.0)
-    pricer = GenericTreePricer(contract, model, params1)
-    pv = pricer.calc_fair_value()
-    print(pv)
-    print(pricer._tree_method._spot_tree)
-    
-    params2 = TreeParams(1, 2)
-    pricer2 = GenericTreePricer(contract, model, params2)
-    pv2 = pricer2.calc_fair_value()
-    print(pv2)
-    print(pricer2._tree_method._spot_tree)
-    print(pricer2._tree_method._df)
