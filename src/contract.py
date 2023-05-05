@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from src.enums import *
+from enums import *
 
 
 class Contract(ABC):
