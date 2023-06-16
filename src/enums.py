@@ -36,5 +36,16 @@ class InOut(str, Enum):     # for Barrier Contract
     OUT: str = 'OUT'
 
 
+class Measure(str, Enum):
+    FAIR_VALUE: str = 'FAIR_VALUE'
+    DELTA: str = 'DELTA'
+    GAMMA: str = 'GAMMA'
+    VEGA: str = 'VEGA'
+    THETA: str = 'THETA'
+    RHO: str = 'RHO'
 
+
+class GreekMethod(str, Enum):
+    ANALYTIC: str = 'ANALYTIC'
+    BUMP: str = 'BUMP'
 

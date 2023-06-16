@@ -31,12 +31,12 @@ class TestPayoff:
 
     def test_forward_payoff(self, spot, strike):
         contract = ForwardContract(self.underlying, strike, self.expiry)
-        assert spot - strike == contract.payoff(spot)
+        assert contract.payoff(spot) == spot - strike
 
     def test_call_payoff(self, spot, strike):
         contract = EuropeanContract(self.underlying, PutCallFwd.CALL, strike, self.expiry)
-        assert max(spot - strike, 0) == contract.payoff(spot)
+        assert contract.payoff(spot) == max(spot - strike, 0)
 
     def test_put_payoff(self, spot, strike):
         contract = EuropeanContract(self.underlying, PutCallFwd.PUT, strike, self.expiry)
-        assert max(strike - spot, 0) == contract.payoff(spot)
+        assert contract.payoff(spot) == max(strike - spot, 0)
