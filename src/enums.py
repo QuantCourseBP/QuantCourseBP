@@ -13,6 +13,21 @@ class PutCallFwd(str, Enum):
     FWD: str = 'FWD'
 
 
+class LongShort(str, Enum):
+    LONG: str = 'LONG'
+    SHORT: str = 'SHORT'
+
+
+class UpDown(str, Enum):     # for Barrier Contract
+    UP: str = 'UP'
+    DOWN: str = 'DOWN'
+
+
+class InOut(str, Enum):     # for Barrier Contract
+    IN: str = 'IN'
+    OUT: str = 'OUT'
+
+
 class Measure(str, Enum):
     FAIR_VALUE: str = 'FAIR_VALUE'
     DELTA: str = 'DELTA'
@@ -25,3 +40,5 @@ class Measure(str, Enum):
 class GreekMethod(str, Enum):
     ANALYTIC: str = 'ANALYTIC'
     BUMP: str = 'BUMP'
+
+
