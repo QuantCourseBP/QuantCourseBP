@@ -1,5 +1,13 @@
 from enum import Enum
 
+class ContractType(str, Enum):
+    FORWARD: str = 'FORWARD'
+    EUROPEANOPTION: str = 'EUROPEANOPTION'
+    AMERICANOPTION: str = 'AMERICANOPTION'
+    EUROPEANDIGITALOPTION: str = 'EUROPEANDIGITALOPTION'
+    ASIANOPTION: str = 'ASIANOPTION'
+    EUROPEANBARRIEROPTION: str = 'EUROPEANBARRIEROPTION'
+
 
 class Stock(str, Enum):
     # todo: replace EXAMPLE stocks with meaningful names
@@ -11,6 +19,21 @@ class PutCallFwd(str, Enum):
     PUT: str = 'PUT'
     CALL: str = 'CALL'
     FWD: str = 'FWD'
+
+
+class LongShort(str, Enum):
+    LONG: str = 'LONG'
+    SHORT: str = 'SHORT'
+
+
+class UpDown(str, Enum):     # for Barrier Contract
+    UP: str = 'UP'
+    DOWN: str = 'DOWN'
+
+
+class InOut(str, Enum):     # for Barrier Contract
+    IN: str = 'IN'
+    OUT: str = 'OUT'
 
 
 class Measure(str, Enum):
@@ -25,3 +48,4 @@ class Measure(str, Enum):
 class GreekMethod(str, Enum):
     ANALYTIC: str = 'ANALYTIC'
     BUMP: str = 'BUMP'
+
