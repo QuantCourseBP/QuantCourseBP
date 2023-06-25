@@ -17,6 +17,11 @@ class Contract(ABC):
         self._expiry: float = exp
         self._num_mon: int = num_mon    # Asian: nr of averaging points; Barrier: nr of monitoring points
 
+        if self.__class__.__name__ != 'Contract':
+            self._contract = self.__class__.__name__.replace('Contract', '')
+        else:
+            self._contract = None
+
     def get_contract(self) -> ContractType:
         return self._contract
 
@@ -83,7 +88,6 @@ class VanillaContract(Contract):
 class ForwardContract(VanillaContract):
     def __init__(self, und: Stock, longshort: LongShort, strk: float, exp: float) -> None:
         super().__init__(und, PutCallFwd.FWD, longshort, strk, exp)
-        self._contract = ContractType.FORWARD
 
 
     def convert_to_generic(self) -> GenericContract:
@@ -100,7 +104,6 @@ class EuropeanContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -121,7 +124,6 @@ class AmericanContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.AMERICANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -142,7 +144,6 @@ class EuropeanDigitalContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANDIGITALOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -186,7 +187,6 @@ class AsianContract(ExoticContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.ASIANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -213,7 +213,6 @@ class EuropeanBarrierContract(ExoticContract):
         if inout not in [InOut.IN, InOut.OUT]:
             self._raise_incorrect_barrier_inout_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANBARRIEROPTION
         self._barrier = barrier
         self._updown = updown
         self._inout = inout
