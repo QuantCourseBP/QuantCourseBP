@@ -44,5 +44,60 @@ class TestPayoff:
         assert contract.payoff(spot) == max(strike - spot, 0)
 
 
-# class TestGenericPayoff:
-#
+@pytest.mark.parametrize('spot', np.arange(-1, 3, 0.5))
+@pytest.mark.parametrize('strike', np.arange(-1, 3, 0.5))
+@pytest.mark.parametrize('longshort', [LongShort.LONG, LongShort.SHORT])
+class TestGenericPayoff_Fwd:
+    expiry = 2
+
+    def test_forward_payoff(self, longshort, spot, strike):
+        trade = ForwardContract('Apple', longshort, strike, self.expiry)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(spot) == generic_trade.payoff(spot)
+
+
+@pytest.mark.parametrize('spot', np.arange(-1, 3, 0.5))
+@pytest.mark.parametrize('strike', np.arange(-1, 3, 0.5))
+@pytest.mark.parametrize('longshort', [LongShort.LONG, LongShort.SHORT])
+@pytest.mark.parametrize('putcall', [PutCallFwd.CALL, PutCallFwd.PUT])
+class TestGenericPayoff_Eu_Am_EuDig:
+    expiry = 2.0
+
+    def test_European_payoff(self, putcall, longshort, spot, strike):
+        trade = EuropeanContract('OTP', putcall, longshort, strike, self.expiry)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(spot) == generic_trade.payoff(spot)
+
+    def test_American_payoff(self, putcall, longshort, spot, strike):
+        trade = AmericanContract('Tesla', putcall, longshort, strike, self.expiry)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(spot) == generic_trade.payoff(spot)
+
+    def test_EuropeanDigital_payoff(self, putcall, longshort, spot, strike):
+        trade = EuropeanDigitalContract('Mol', putcall, longshort, strike, self.expiry)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(spot) == generic_trade.payoff(spot)
+
+
+
+@pytest.mark.parametrize('strike', np.arange(-1, 3, 0.5))
+@pytest.mark.parametrize('longshort', [LongShort.LONG, LongShort.SHORT])
+@pytest.mark.parametrize('putcall', [PutCallFwd.CALL, PutCallFwd.PUT])
+class TestGenericPayoff_Asian_Barr:
+    spot = np.arange(-1, 3, 0.5) 
+    expiry = 2.0
+
+    def test_Asian_payoff(self, putcall, longshort, strike):
+        trade = AsianContract('Microsoft', putcall, longshort, strike, self.expiry)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(self.spot) == generic_trade.payoff(self.spot)
+
+    @pytest.mark.parametrize('updown', [UpDown.DOWN, UpDown.UP])
+    @pytest.mark.parametrize('inout', [InOut.IN, InOut.OUT])
+    @pytest.mark.parametrize('barrier', np.arange(-1, 3, 0.5))
+    def test_EuropeanBarrier_payoff(self, putcall, longshort, strike, updown, inout, barrier):
+        trade = EuropeanBarrierContract('Deutsche Bank', putcall, longshort, strike, self.expiry,
+                                        barrier, updown, inout)
+        generic_trade = trade.convert_to_generic()
+        assert trade.payoff(self.spot) == generic_trade.payoff(self.spot)
+
