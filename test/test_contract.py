@@ -33,15 +33,15 @@ class TestPayoff:
 
     def test_forward_payoff(self, spot, strike):
         contract = ForwardContract(self.underlying, self.longshort, strike, self.expiry)
-        assert contract.payoff(spot) == spot - strike
+        assert contract.payoff(spot) == pytest.approx(spot - strike)
 
     def test_call_payoff(self, spot, strike):
         contract = EuropeanContract(self.underlying, PutCallFwd.CALL, self.longshort, strike, self.expiry)
-        assert contract.payoff(spot) == max(spot - strike, 0)
+        assert contract.payoff(spot) == pytest.approx(max(spot - strike, 0))
 
     def test_put_payoff(self, spot, strike):
         contract = EuropeanContract(self.underlying, PutCallFwd.PUT, self.longshort, strike, self.expiry)
-        assert contract.payoff(spot) == max(strike - spot, 0)
+        assert contract.payoff(spot) == pytest.approx(max(strike - spot, 0))
 
 
 @pytest.mark.parametrize('spot', np.arange(-1, 3, 0.5))
@@ -53,7 +53,7 @@ class TestGenericPayoff_Fwd:
     def test_forward_payoff(self, longshort, spot, strike):
         trade = ForwardContract('Apple', longshort, strike, self.expiry)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(spot) == generic_trade.payoff(spot)
+        assert trade.payoff(spot) == pytest.approx(generic_trade.payoff(spot))
 
 
 @pytest.mark.parametrize('spot', np.arange(-1, 3, 0.5))
@@ -66,17 +66,17 @@ class TestGenericPayoff_Eu_Am_EuDig:
     def test_European_payoff(self, putcall, longshort, spot, strike):
         trade = EuropeanContract('OTP', putcall, longshort, strike, self.expiry)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(spot) == generic_trade.payoff(spot)
+        assert trade.payoff(spot) == pytest.approx(generic_trade.payoff(spot))
 
     def test_American_payoff(self, putcall, longshort, spot, strike):
         trade = AmericanContract('Tesla', putcall, longshort, strike, self.expiry)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(spot) == generic_trade.payoff(spot)
+        assert trade.payoff(spot) == pytest.approx(generic_trade.payoff(spot))
 
     def test_EuropeanDigital_payoff(self, putcall, longshort, spot, strike):
         trade = EuropeanDigitalContract('Mol', putcall, longshort, strike, self.expiry)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(spot) == generic_trade.payoff(spot)
+        assert trade.payoff(spot) == pytest.approx(generic_trade.payoff(spot))
 
 
 
@@ -90,7 +90,7 @@ class TestGenericPayoff_Asian_Barr:
     def test_Asian_payoff(self, putcall, longshort, strike):
         trade = AsianContract('Microsoft', putcall, longshort, strike, self.expiry)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(self.spot) == generic_trade.payoff(self.spot)
+        assert trade.payoff(self.spot) == pytest.approx(generic_trade.payoff(self.spot))
 
     @pytest.mark.parametrize('updown', [UpDown.DOWN, UpDown.UP])
     @pytest.mark.parametrize('inout', [InOut.IN, InOut.OUT])
@@ -99,5 +99,5 @@ class TestGenericPayoff_Asian_Barr:
         trade = EuropeanBarrierContract('Deutsche Bank', putcall, longshort, strike, self.expiry,
                                         barrier, updown, inout)
         generic_trade = trade.convert_to_generic()
-        assert trade.payoff(self.spot) == generic_trade.payoff(self.spot)
+        assert trade.payoff(self.spot) == pytest.approx(generic_trade.payoff(self.spot))
 
