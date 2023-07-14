@@ -1,7 +1,7 @@
 from __future__ import annotations
-from market_data import MarketData
-from enums import *
-from market_data import VolGrid
+from src.market_data import MarketData
+from src.enums import *
+from src.market_data import VolGrid
 import numpy as np
 from abc import ABC, abstractmethod
 from src.enums import *
@@ -23,7 +23,7 @@ class MarketModel(ABC):
         return self._volgrid
 
     def get_df(self, t: float) -> float:
-        return np.exp(-self.interest_rate * t)
+        return np.exp(-self._interest_rate * t)
 
     @abstractmethod
     def get_simulated_spot(self, t: float, Z: float) -> float:
@@ -39,11 +39,11 @@ class BSVolModel(MarketModel):
         super().__init__(und)
 
     def get_vol(self) -> float:
-        return self.get_volgrid.get_vol(1.0, 1.0)
+        return self.get_volgrid().get_vol(1.0, 1.0)
 
     def get_simulated_spot(self, t: float, Z: float) -> float:
         return np.exp(
-            (self.interest_rate * t - 0.5 * self.get_vol() ** 2 * t) + (self.get_vol() * Z * np.sqrt(t)))
+            (self._interest_rate * t - 0.5 * self.get_vol() ** 2 * t) + (self.get_vol() * Z * np.sqrt(t)))
 
 
 class FlatVolModel(MarketModel):
@@ -51,11 +51,11 @@ class FlatVolModel(MarketModel):
         super().__init__(und)
 
     def get_vol(self, t: float, strike: float) -> float:
-        return self.get_volgrid.get_vol(t, strike)
+        return self.get_volgrid().get_vol(t, strike)
 
     def get_simulated_spot(self, t: float, strike: float, Z: float) -> float:
         vol = self.get_vol(t, strike)
         return np.exp(
-            (self.interest_rate * t - 0.5 * vol ** 2 * t) + (vol * Z * np.sqrt(t)))
+            (self._interest_rate * t - 0.5 * vol ** 2 * t) + (vol * Z * np.sqrt(t)))
 
 
