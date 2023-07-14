@@ -6,9 +6,11 @@ class TestTreePricer:
     MarketData.initialize()
     
     model = FlatVolModel(Stock.EXAMPLE1)
-    contract = EuropeanContract(Stock.EXAMPLE1, PutCallFwd.CALL, 1.0, 1.0)
+    expiry = 1.0
+    moneyness = 1.0
+    contract = EuropeanContract(Stock.EXAMPLE1, PutCallFwd.CALL, moneyness, expiry)
     
-    params = [TreeParams(1, 2, 1.2, 0.8), TreeParams(1, 2)]
+    params = [TreeParams(expiry, moneyness, 2, 1.2, 0.8), TreeParams(expiry, moneyness, 2)]
     pvs = [0.0798231016, 0.104734926]
 
     @pytest.mark.parametrize('param, expected_pv', zip(params, pvs))

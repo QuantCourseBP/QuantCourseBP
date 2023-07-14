@@ -1,7 +1,7 @@
 from __future__ import annotations
-from market_data import MarketData
-from enums import *
-from market_data import VolGrid
+from src.market_data import MarketData
+from src.enums import *
+from src.market_data import VolGrid
 import numpy as np
 from abc import ABC, abstractmethod
 from src.enums import *
@@ -50,8 +50,8 @@ class FlatVolModel(MarketModel):
     def __init__(self, und: Stock):
         super().__init__(und)
 
-    def get_vol(self, t: float) -> float:
-        return self.get_volgrid().get_vol(t, 1.0)
+    def get_vol(self, t: float, strike: float) -> float:
+        return self.get_volgrid().get_vol(t, strike)
 
     def get_simulated_spot(self, t: float, strike: float, Z: float) -> float:
         vol = self.get_vol(t, strike)

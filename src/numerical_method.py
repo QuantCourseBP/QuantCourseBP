@@ -80,7 +80,7 @@ class SimpleBinomialTree(NumericalMethod):
     
 class BalancedSimpleBinomialTree(SimpleBinomialTree):
     def __init__(self, params: TreeParams, model: FlatVolModel):
-        super().__init__(TreeParams(params._exp, params._nr_steps, BalancedSimpleBinomialTree.calc_up_step_mult(model.get_rate(), model.get_vol(params._exp), params._nr_steps, params._exp), BalancedSimpleBinomialTree.calc_down_step_mult(model.get_rate(), model.get_vol(params._exp), params._nr_steps, params._exp)), model)
+        super().__init__(TreeParams(params._exp, params._moneyness, params._nr_steps, BalancedSimpleBinomialTree.calc_up_step_mult(model.get_rate(), model.get_vol(params._exp, params._moneyness), params._nr_steps, params._exp), BalancedSimpleBinomialTree.calc_down_step_mult(model.get_rate(), model.get_vol(params._exp, params._moneyness), params._nr_steps, params._exp)), model)
         
     @staticmethod
     def calc_up_step_mult(rate: float, vol: float, nr_steps: int, exp: float):
@@ -122,8 +122,9 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, exp: float, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
+    def __init__(self, exp: float, moneyness: float, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
         self._exp = exp
         self._nr_steps = nr_steps
         self._up_step_mult = up_step_mult
         self._down_step_mult = down_step_mult
+        self._moneyness = moneyness
