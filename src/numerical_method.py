@@ -116,9 +116,11 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self) -> None:
+    def __init__(self, exp: float, ns_steps: int, nt_steps: int) -> None:
         # todo: to be implemented
-        pass
+        self.exp = exp  # Time to maturity
+        self.ns_steps = ns_steps  # Number of stock price steps
+        self.nt_steps = nt_steps  # Number of time steps
 
 
 class TreeParams(Params):
@@ -128,3 +130,44 @@ class TreeParams(Params):
         self._up_step_mult = up_step_mult
         self._down_step_mult = down_step_mult
         self._moneyness = moneyness
+
+
+class BlackScholesPDE(PDEMethod):
+    def __init__(self, model: BSVolModel, params: PDEParams):
+        super().__init__(model, params)
+        self.sigma = model.get_vol()
+        self.nt_steps = params.nt_steps
+        self.ns_steps = params.ns_steps
+        self.und_step = model.get_initial_spot() / float(self.ns_steps)  # Number of time steps
+        self.t_step = params.exp / float(self.nt_steps)  # Number of stock price steps
+        self._interest_rate = model.get_rate()
+        self.grid = np.zeros((self.nt_steps + 1, self.ns_steps + 1))
+        self.P, self.Q, self.R = self.tridiagonal_matrix()
+
+    def explicit_method(self):
+        for j in range(1, self.nt_steps + 1):
+            for i in range(1, self.ns_steps):
+                alpha = 0.5 * self.t_step * (self.sigma ** 2 * i ** 2 - self._interest_rate * i)
+                beta = 1 - self.t_step * (self.sigma ** 2 * i ** 2 + self._interest_rate)
+                gamma = 0.5 * self.t_step * (self.sigma ** 2 * i ** 2 + self._interest_rate * i)
+                self.grid[j, i] = alpha * self.grid[j - 1, i - 1] + beta * self.grid[j - 1, i] + gamma * self.grid[
+                    j - 1, i + 1]
+
+    def implicit_method(self):
+        for j in range(self.nt_steps, 0, -1):
+            self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.Q, self.grid[j, :]))
+
+    def crank_nicolson_method(self):
+        for j in range(self.nt_steps, 0, -1):
+            self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.R, self.grid[j, :]))
+
+    def tridiagonal_matrix(self):
+        alpha = -0.5 * self.t_step * (self.sigma ** 2 * np.arange(1, self.ns_steps) ** 2 - self._interest_rate * np.arange(1, self.ns_steps))
+        beta = 1 + self.t_step * (self.sigma ** 2 * np.arange(1, self.ns_steps) ** 2 + self._interest_rate)
+        gamma = -0.5 * self.t_step * (self.sigma ** 2 * np.arange(1, self.ns_steps) ** 2 + self._interest_rate * np.arange(1, self.ns_steps))
+
+        P = np.diag(alpha[1:], -1) + np.diag(beta) + np.diag(gamma[:-1], 1)
+        Q = np.diag(-alpha[1:], -1) + np.diag(1 - beta) + np.diag(-gamma[:-1], 1)
+        R = np.diag(alpha[1:], -1) + np.diag(1 - beta) + np.diag(gamma[:-1], 1)
+
+        return P, Q, R
