@@ -12,7 +12,7 @@ class Contract(ABC):
         self._underlying: Stock = und
         self._derivative_type: PutCallFwd = dtype
         self._derivative_longshort: LongShort = longshort
-        self._ls = 1 if longshort == LongShort.LONG else -1
+        self._direction: float = 1.0 if self._derivative_longshort == LongShort.LONG else -1.0
         self._strike: float = strk
         self._expiry: float = exp
         self._num_mon: int = num_mon    # Asian: nr of averaging points; Barrier: nr of monitoring points
@@ -29,11 +29,17 @@ class Contract(ABC):
     def get_longshort(self) -> LongShort:
         return self._derivative_longshort
 
+    def get_direction(self) -> float:
+        return self._direction
+
     def get_strike(self) -> float:
         return self._strike
 
     def get_expiry(self) -> float:
         return self._expiry
+
+    def set_expiry(self, expiry: float) -> None:
+        self._expiry = float(expiry)
 
     def __str__(self) -> str:
         return str(self.to_dict())
@@ -91,7 +97,7 @@ class ForwardContract(VanillaContract):
                                self._derivative_longshort, self._strike, self._expiry)
 
     def payoff(self, spot: float) -> float:
-        return self._ls * (spot - self._strike)
+        return self._direction * (spot - self._strike)
 
 
 class EuropeanContract(VanillaContract):
@@ -108,9 +114,9 @@ class EuropeanContract(VanillaContract):
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return self._ls * max(spot - self._strike, 0)
+            return self._direction * max(spot - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return self._ls * max(self._strike - spot, 0)
+            return self._direction * max(self._strike - spot, 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -129,9 +135,9 @@ class AmericanContract(VanillaContract):
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return self._ls * max(spot - self._strike, 0)
+            return self._direction * max(spot - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return self._ls * max(self._strike - spot, 0)
+            return self._direction * max(self._strike - spot, 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -150,9 +156,9 @@ class EuropeanDigitalContract(VanillaContract):
 
     def payoff(self, spot: float) -> float:
         if self._derivative_type == PutCallFwd.CALL:
-            return self._ls * float(spot - self._strike > 0)
+            return self._direction * float(spot - self._strike > 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return self._ls * float(self._strike - spot > 0)
+            return self._direction * float(self._strike - spot > 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -195,9 +201,9 @@ class AsianContract(ExoticContract):
     def payoff(self, prices_und: float) -> float:
     # TO DO: prices_und to derive from the underlying process using the timeline
         if self._derivative_type == PutCallFwd.CALL:
-            return self._ls * max(mean(prices_und) - self._strike, 0)
+            return self._direction * max(mean(prices_und) - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return self._ls * max(self._strike - mean(prices_und), 0)
+            return self._direction * max(self._strike - mean(prices_und), 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -250,9 +256,9 @@ class EuropeanBarrierContract(ExoticContract):
                (self._inout == 'OUT') * (1 - self.is_breached(prices_und))
 
         if self._derivative_type == PutCallFwd.CALL:
-            return mult * self._ls * max(prices_und[-1] - self._strike, 0)
+            return mult * self._direction * max(prices_und[-1] - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
-            return mult * self._ls * max(self._strike - prices_und[-1], 0)
+            return mult * self._direction * max(self._strike - prices_und[-1], 0)
         else:
             self._raise_incorrect_derivative_type()
 
@@ -303,33 +309,33 @@ class GenericContract(ExoticContract):
     # TO DO: prices_und to derive from the underlying process using the timeline
 
         if self._contract == ContractType.FORWARD:
-            return self._ls * (prices_und - self._strike)
+            return self._direction * (prices_und - self._strike)
 
         elif self._contract == ContractType.AMERICANOPTION or self._contract == ContractType.EUROPEANOPTION:
             if self._derivative_type == PutCallFwd.CALL:
-                return self._ls * max(prices_und - self._strike, 0)
+                return self._direction * max(prices_und - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
-                return self._ls * max(self._strike - prices_und, 0)
+                return self._direction * max(self._strike - prices_und, 0)
 
         elif self._contract == ContractType.EUROPEANDIGITALOPTION:
             if self._derivative_type == PutCallFwd.CALL:
-                return self._ls * float(prices_und - self._strike > 0)
+                return self._direction * float(prices_und - self._strike > 0)
             elif self._derivative_type == PutCallFwd.PUT:
-                return self._ls * float(self._strike - prices_und > 0)
+                return self._direction * float(self._strike - prices_und > 0)
 
         elif self._contract == ContractType.ASIANOPTION:
             if self._derivative_type == PutCallFwd.CALL:
-                return self._ls * max(mean(prices_und) - self._strike, 0)
+                return self._direction * max(mean(prices_und) - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
-                return self._ls * max(self._strike - mean(prices_und), 0)
+                return self._direction * max(self._strike - mean(prices_und), 0)
 
         elif self._contract == ContractType.EUROPEANBARRIEROPTION:
             mult = (self._inout == 'IN') * self.is_breached(prices_und) + \
                    (self._inout == 'OUT') * (1 - self.is_breached(prices_und))
             if self._derivative_type == PutCallFwd.CALL:
-                return mult * self._ls * max(prices_und[-1] - self._strike, 0)
+                return mult * self._direction * max(prices_und[-1] - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
-                return mult * self._ls * max(self._strike - prices_und[-1], 0)
+                return mult * self._direction * max(self._strike - prices_und[-1], 0)
 
 
 def main():
