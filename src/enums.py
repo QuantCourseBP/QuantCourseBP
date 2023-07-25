@@ -42,6 +42,3 @@ class InOut(str, Enum):     # for Barrier Contract
     OUT: str = 'OUT'
 
 
-
-
->>>>>>>>> Temporary merge branch 2
