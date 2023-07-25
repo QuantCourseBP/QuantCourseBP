@@ -7,6 +7,7 @@ from src.model import *
 from src.numerical_method import *
 from scipy.stats import norm
 
+
 class Pricer(ABC):
     RELATIVE_BUMP_SIZE: float = 0.01
 
@@ -105,12 +106,12 @@ class Pricer(ABC):
 
 class EuropeanAnalyticPricer(Pricer):
     @staticmethod
-    def __d1(spot: float, strike: float, vol: float, rate: float, tenor: float):
+    def d1(spot: float, strike: float, vol: float, rate: float, tenor: float):
         return 1 / (vol * np.sqrt(tenor)) * (np.log(spot / strike) + (rate + vol**2 / 2) * tenor)
 
     @staticmethod
-    def __d2(spot: float, strike: float, vol: float, rate: float, tenor: float):
-        d1 = EuropeanAnalyticPricer.__d1(spot, strike, vol, rate, tenor)
+    def d2(spot: float, strike: float, vol: float, rate: float, tenor: float):
+        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
         return d1 - vol * np.sqrt(tenor)
 
     def __init__(self, contract: EuropeanContract, model: MarketModel, method: AnalyticMethod):
@@ -130,8 +131,8 @@ class EuropeanAnalyticPricer(Pricer):
         vol = self._model.get_vol(tenor, spot / strike)
         rate = self._model.get_rate()
         df = self._model.get_df(tenor)
-        d1 = EuropeanAnalyticPricer.__d1(spot, strike, vol, rate, tenor)
-        d2 = EuropeanAnalyticPricer.__d2(spot, strike, vol, rate, tenor)
+        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
+        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
         if self._contract.get_type() == PutCallFwd.CALL:
             return direction * (spot * norm.cdf(d1) - strike * df * norm.cdf(d2))
         elif self._contract.get_type() == PutCallFwd.PUT:
@@ -147,7 +148,7 @@ class EuropeanAnalyticPricer(Pricer):
             tenor = self._contract.get_expiry()
             vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.__d1(spot, strike, vol, rate, tenor)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = norm.cdf(d1)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -168,7 +169,7 @@ class EuropeanAnalyticPricer(Pricer):
             tenor = self._contract.get_expiry()
             vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.__d1(spot, strike, vol, rate, tenor)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = norm.pdf(d1) / (spot * vol * np.sqrt(tenor))
             else:
@@ -188,7 +189,7 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
             rate = self._model.get_rate()
             df = self._model.get_df(tenor)
-            d2 = EuropeanAnalyticPricer.__d2(spot, strike, vol, rate, tenor)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = strike * df * norm.pdf(d2) * np.sqrt(tenor)
             else:
@@ -208,8 +209,8 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
             rate = self._model.get_rate()
             df = self._model.get_df(tenor)
-            d1 = EuropeanAnalyticPricer.__d1(spot, strike, vol, rate, tenor)
-            d2 = EuropeanAnalyticPricer.__d2(spot, strike, vol, rate, tenor)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(tenor)) + rate * strike * df * norm.cdf(d2))
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -231,7 +232,7 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
             rate = self._model.get_rate()
             df = self._model.get_df(tenor)
-            d2 = EuropeanAnalyticPricer.__d2(spot, strike, vol, rate, tenor)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = strike * tenor * df * norm.cdf(d2)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -290,11 +291,14 @@ class GenericTreePricer(Pricer):
     def calc_rho(self, method: GreekMethod) -> float:
         raise NotImplementedError('Greeks are not implemented for tree method yet.')
 
+
 # todo: to be implemented
 class GenericPDEPricer(Pricer):
-    pass
+    def calc_fair_value(self) -> float:
+        raise NotImplementedError('Fair value is not implemented yet for GenericPDEPricer.')
 
 
 # todo: to be implemented
 class GenericMCPricer(Pricer):
-    pass
+    def calc_fair_value(self) -> float:
+        raise NotImplementedError('Fair value is not implemented yet for GenericMCPricer.')
