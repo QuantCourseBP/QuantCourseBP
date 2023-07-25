@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
-
 from src.enums import *
 from statistics import mean
 
@@ -17,7 +16,12 @@ class Contract(ABC):
         self._expiry: float = exp
         self._num_mon: int = num_mon    # Asian: nr of averaging points; Barrier: nr of monitoring points
 
-    def get_contract(self) -> ContractType:
+        if self.__class__.__name__ != 'Contract':
+            self._contract = self.__class__.__name__.replace('Contract', '')
+        else:
+            self._contract = self.__class__.__name__
+
+    def get_contract(self) -> str:
         return self._contract
 
     def get_und(self) -> Stock:
@@ -66,9 +70,6 @@ class Contract(ABC):
     def _raise_incorrect_derivative_type(self):
         raise TypeError(f'Derivative type of {type(self).__name__} must be CALL or PUT')
 
-    def _raise_incorrect_derivative_type_generic(self):
-        raise TypeError(f'Derivative type of {type(self).__name__} must be CALL, PUT or FWD')
-
 
 class VanillaContract(Contract):
     def to_dict(self) -> dict[str, any]:
@@ -89,7 +90,6 @@ class VanillaContract(Contract):
 class ForwardContract(VanillaContract):
     def __init__(self, und: Stock, longshort: LongShort, strk: float, exp: float) -> None:
         super().__init__(und, PutCallFwd.FWD, longshort, strk, exp)
-        self._contract = ContractType.FORWARD
 
 
     def convert_to_generic(self) -> GenericContract:
@@ -106,7 +106,6 @@ class EuropeanContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -127,7 +126,6 @@ class AmericanContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.AMERICANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -148,7 +146,6 @@ class EuropeanDigitalContract(VanillaContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANDIGITALOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -192,7 +189,6 @@ class AsianContract(ExoticContract):
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.ASIANOPTION
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -219,25 +215,16 @@ class EuropeanBarrierContract(ExoticContract):
         if inout not in [InOut.IN, InOut.OUT]:
             self._raise_incorrect_barrier_inout_type()
         super().__init__(und, dtype, longshort, strk, exp)
-        self._contract = ContractType.EUROPEANBARRIEROPTION
         self._barrier = barrier
         self._updown = updown
         self._inout = inout
-
-    def get_barrier(self) -> float:
-        return self._barrier
-
-    def get_updown(self) -> UpDown:
-        return self._updown
-
-    def get_inout(self) -> InOut:
-        return self._inout
+        self.misc_barrier = Barrier(self._barrier, self._updown, self._inout)
+        self.get_barrier = self.misc_barrier.get_barrier
+        self.get_updown = self.misc_barrier.get_updown
+        self.get_inout = self.misc_barrier.get_inout
 
     def is_breached(self, prices_und) -> bool:
-        if self._updown == 'UP':
-            return( any(self._barrier <= price for price in prices_und) )
-        else:
-            return (any(self._barrier >= price for price in prices_und) )
+        return self.misc_barrier.is_breached(prices_und)
 
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
@@ -265,10 +252,10 @@ class EuropeanBarrierContract(ExoticContract):
 
 class GenericContract(ExoticContract):
 
-    def __init__(self, contract: ContractType, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float,
+    def __init__(self, contract: str, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float,
                  barrier: float = np.Inf, updown: UpDown = None, inout: InOut = None) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT, PutCallFwd.FWD]:
-            self._raise_incorrect_derivative_type_generic()
+            self._raise_incorrect_derivative_type()
         if updown not in [UpDown.UP, UpDown.DOWN, None]:
             self._raise_incorrect_barrier_updown_type()
         if inout not in [InOut.IN, InOut.OUT, None]:
@@ -278,24 +265,19 @@ class GenericContract(ExoticContract):
         self._barrier = barrier
         self._updown = updown
         self._inout = inout
+        self.misc_barrier = Barrier(self._barrier, self._updown, self._inout)
+        self.get_barrier = self.misc_barrier.get_barrier
+        self.get_updown = self.misc_barrier.get_updown
+        self.get_inout = self.misc_barrier.get_inout
 
-    def get_contract_type(self) -> ContractType:
+    def get_contract_type(self) -> str:
         return self._contract
 
-    def get_barrier(self) -> float:
-        return self._barrier
-
-    def get_updown(self) -> UpDown:
-        return self._updown
-
-    def get_inout(self) -> InOut:
-        return self._inout
+    def _raise_incorrect_derivative_type(self):
+        raise TypeError(f'Derivative type of {type(self).__name__} must be CALL, PUT or FWD')
 
     def is_breached(self, prices_und) -> bool:
-        if self._updown == 'UP':
-            return( any([self._barrier <= price for price in prices_und]) )
-        else:
-            return (any([self._barrier >= price for price in prices_und]))
+        return self.misc_barrier.is_breached(prices_und)
 
     def to_dict(self) -> dict[str, any]:
         out = super().to_dict()
@@ -308,34 +290,56 @@ class GenericContract(ExoticContract):
     def payoff(self, prices_und: float) -> float:
     # TO DO: prices_und to derive from the underlying process using the timeline
 
-        if self._contract == ContractType.FORWARD:
+        if self._contract == 'Forward':
             return self._direction * (prices_und - self._strike)
 
-        elif self._contract == ContractType.AMERICANOPTION or self._contract == ContractType.EUROPEANOPTION:
+        elif self._contract == 'American' or self._contract == 'European':
             if self._derivative_type == PutCallFwd.CALL:
                 return self._direction * max(prices_und - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
                 return self._direction * max(self._strike - prices_und, 0)
 
-        elif self._contract == ContractType.EUROPEANDIGITALOPTION:
+        elif self._contract == 'EuropeanDigital':
             if self._derivative_type == PutCallFwd.CALL:
                 return self._direction * float(prices_und - self._strike > 0)
             elif self._derivative_type == PutCallFwd.PUT:
                 return self._direction * float(self._strike - prices_und > 0)
 
-        elif self._contract == ContractType.ASIANOPTION:
+        elif self._contract == 'Asian':
             if self._derivative_type == PutCallFwd.CALL:
                 return self._direction * max(mean(prices_und) - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
                 return self._direction * max(self._strike - mean(prices_und), 0)
 
-        elif self._contract == ContractType.EUROPEANBARRIEROPTION:
+        elif self._contract == 'EuropeanBarrier':
             mult = (self._inout == 'IN') * self.is_breached(prices_und) + \
                    (self._inout == 'OUT') * (1 - self.is_breached(prices_und))
             if self._derivative_type == PutCallFwd.CALL:
                 return mult * self._direction * max(prices_und[-1] - self._strike, 0)
             elif self._derivative_type == PutCallFwd.PUT:
                 return mult * self._direction * max(self._strike - prices_und[-1], 0)
+
+
+class Barrier:
+    def __init__(self, barrier: float, updown: UpDown, inout: InOut) -> None:
+        self._barrier = barrier
+        self._updown = updown
+        self._inout = inout
+
+    def get_barrier(self) -> float:
+        return self._barrier
+
+    def get_updown(self) -> UpDown:
+        return self._updown
+
+    def get_inout(self) -> InOut:
+        return self._inout
+
+    def is_breached(self, prices_und) -> bool:
+        if self._updown == 'UP':
+            return any(self._barrier <= price for price in prices_und)
+        else:
+            return any(self._barrier >= price for price in prices_und)
 
 
 def main():
@@ -391,6 +395,5 @@ def main():
     print(generic_trade6.payoff(values))
 
 
-
-if __name__ == '__main__': main()
-
+if __name__ == '__main__':
+    main()
