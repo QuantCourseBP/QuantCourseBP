@@ -2,13 +2,14 @@ import numpy as np
 import pytest
 from src.pricer import *
 
+
 class TestTreePricer:
     MarketData.initialize()
     
     model = FlatVolModel(Stock.EXAMPLE1)
     expiry = 1.0
     moneyness = 1.0
-    contract = EuropeanContract(Stock.EXAMPLE1, PutCallFwd.CALL, moneyness, expiry)
+    contract = EuropeanContract(Stock.EXAMPLE1, PutCallFwd.CALL, LongShort.LONG, moneyness, expiry)
     
     params = [TreeParams(expiry, moneyness, 2, 1.2, 0.8), TreeParams(expiry, moneyness, 2)]
     pvs = [0.0798231016, 0.104734926]

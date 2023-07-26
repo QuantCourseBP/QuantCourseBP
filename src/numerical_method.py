@@ -98,8 +98,8 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
 
 
 class AnalyticMethod(NumericalMethod):
-    def __new__():
-        raise NotImplementedError('AnalyticMethod class cannot be instantiated')
+    def __init__(self, model: MarketModel):
+        super().__init__(model, Params())
 
 
 class Params(ABC):
