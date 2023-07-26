@@ -40,4 +40,3 @@ class Measure(str, Enum):
 class GreekMethod(str, Enum):
     ANALYTIC: str = 'ANALYTIC'
     BUMP: str = 'BUMP'
-
