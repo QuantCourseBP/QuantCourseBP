@@ -291,17 +291,9 @@ class GenericTreePricer(Pricer):
     def calc_rho(self, method: GreekMethod) -> float:
         raise NotImplementedError('Greeks are not implemented for tree method yet.')
 
-<<<<<<< HEAD
-=======
-
-# todo: to be implemented
-class GenericPDEPricer(Pricer):
-    def calc_fair_value(self) -> float:
-        raise NotImplementedError('Fair value is not implemented yet for GenericPDEPricer.')
->>>>>>> c7420b0e9198cc394b16a313520690abda82bcbc
 
 class GenericPDEPricer(Pricer):
-    def __init__(self, contract: EuropeanContract, model: BSVolModel, params: PDEParams):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
         self._derivative_type = contract.get_type()
         self._bsPDE = BlackScholesPDE(model, params)
         self.grid = self._bsPDE.grid
@@ -312,17 +304,6 @@ class GenericPDEPricer(Pricer):
         self.ns_steps = params.ns_steps
         self.und_step = self._initial_spot / float(self.ns_steps)  # Number of time steps
         self.t_step = params.exp / float(self.nt_steps)  # Number of stock price steps
-
-    def setup_boundary_conditions(self):
-        if self._derivative_type == "CALL":
-            self.grid[0, :] = np.maximum(np.linspace(0, self._initial_spot + self.ns_steps * self.und_step, self.ns_steps + 1) - self._strike, 0)
-            self.grid[:, -1] = (self._initial_spot + self.ns_steps * self.und_step - self._strike) * np.exp(
-                -self._interest_rate * self.t_step * (self.nt_steps - np.arange(self.nt_steps + 1)))
-
-        else:
-            self.grid[0, :] = np.maximum(self._strike - np.linspace(0, self._initial_spot + self.ns_steps * self.und_step, self.ns_steps + 1), 0)
-            self.grid[:, -1] = (self._strike - self._initial_spot - self.ns_steps * self.und_step) * np.exp(
-                -self._interest_rate * self.t_step * (self.nt_steps - np.arange(self.nt_steps  + 1)))
 
     def calc_fair_value(self, method=PDEMethod.EXPLICIT) -> float:
         self.setup_boundary_conditions()

@@ -116,11 +116,13 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, exp: float, ns_steps: int, nt_steps: int) -> None:
+    def __init__(self, exp: float, strike: float, dtype: PutCallFwd, ns_steps: int, nt_steps: int) -> None:
         # todo: to be implemented
         self.exp = exp  # Time to maturity
         self.ns_steps = ns_steps  # Number of stock price steps
         self.nt_steps = nt_steps  # Number of time steps
+        self.strike = strike
+        self.contract_type = dtype   # CALL or PUT
 
 
 class TreeParams(Params):
@@ -133,18 +135,35 @@ class TreeParams(Params):
 
 
 class BlackScholesPDE(PDEMethod):
-    def __init__(self, model: BSVolModel, params: PDEParams):
+    def __init__(self, model: MarketModel, params: PDEParams):
         super().__init__(model, params)
-        self.sigma = model.get_vol()
+        self.exp = params.exp
+        self.strike = params.strike
+        self.sigma = model.get_vol(self.exp, model.get_initial_spot()/self.strike)
         self.nt_steps = params.nt_steps
         self.ns_steps = params.ns_steps
+        self._derivative_type = params.contract_type
+        self.S_min = 0
+        self.S_max = 2 * model.get_initial_spot()   # maximum stock Price
         self.und_step = model.get_initial_spot() / float(self.ns_steps)  # Number of time steps
         self.t_step = params.exp / float(self.nt_steps)  # Number of stock price steps
         self._interest_rate = model.get_rate()
         self.grid = np.zeros((self.nt_steps + 1, self.ns_steps + 1))
         self.P, self.Q, self.R = self.tridiagonal_matrix()
 
+    def setup_boundary_conditions(self):
+        if self._derivative_type == PutCallFwd.CALL:
+            self.grid[0, :] = np.maximum(np.linspace(self.S_min, self.S_max, self.ns_steps + 1) - self.strike, 0)
+            self.grid[:, -1] = (self.S_max - self.strike) * np.exp(
+                -self._interest_rate * self.t_step * (self.nt_steps - np.arange(self.nt_steps + 1)))
+
+        else:
+            self.grid[0, :] = np.maximum(self.strike - np.linspace(self.S_min, self.S_max, self.ns_steps + 1), 0)
+            self.grid[:, -1] = (self.strike - self.S_max) * np.exp(
+                -self._interest_rate * self.t_step * (self.nt_steps - np.arange(self.nt_steps + 1)))
+
     def explicit_method(self):
+        self.setup_boundary_conditions()
         for j in range(1, self.nt_steps + 1):
             for i in range(1, self.ns_steps):
                 alpha = 0.5 * self.t_step * (self.sigma ** 2 * i ** 2 - self._interest_rate * i)
@@ -154,10 +173,12 @@ class BlackScholesPDE(PDEMethod):
                     j - 1, i + 1]
 
     def implicit_method(self):
+        self.setup_boundary_conditions()
         for j in range(self.nt_steps, 0, -1):
             self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.Q, self.grid[j, :]))
 
     def crank_nicolson_method(self):
+        self.setup_boundary_conditions()
         for j in range(self.nt_steps, 0, -1):
             self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.R, self.grid[j, :]))
 
