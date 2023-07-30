@@ -55,10 +55,9 @@ class Pricer(ABC):
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        spot = self._model.get_initial_spot()
         strike = self._contract.get_strike()
-        tenor = self._contract.get_expiry()
-        vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+        expiry = self._contract.get_expiry()
+        vol = self._model.get_vol(strike, expiry)
         bump_size = self.RELATIVE_BUMP_SIZE * vol
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
@@ -124,15 +123,13 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_fair_value(self) -> float:
         direction = self._contract.get_direction()
         strike = self._contract.get_strike()
-        tenor = self._contract.get_expiry()
-        if tenor < 1e-8:
-            return 0.0  # return zero if option expired
+        expiry = self._contract.get_expiry()
         spot = self._model.get_initial_spot()
-        vol = self._model.get_vol(tenor, spot / strike)
+        vol = self._model.get_vol(strike, expiry)
         rate = self._model.get_rate()
-        df = self._model.get_df(tenor)
-        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
-        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
+        df = self._model.get_df(expiry)
+        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
+        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
         if self._contract.get_type() == PutCallFwd.CALL:
             return direction * (spot * norm.cdf(d1) - strike * df * norm.cdf(d2))
         elif self._contract.get_type() == PutCallFwd.PUT:
@@ -145,10 +142,10 @@ class EuropeanAnalyticPricer(Pricer):
             greek = 0.0
             spot = self._model.get_initial_spot()
             strike = self._contract.get_strike()
-            tenor = self._contract.get_expiry()
-            vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+            expiry = self._contract.get_expiry()
+            vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = norm.cdf(d1)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -166,12 +163,12 @@ class EuropeanAnalyticPricer(Pricer):
             greek = 0.0
             spot = self._model.get_initial_spot()
             strike = self._contract.get_strike()
-            tenor = self._contract.get_expiry()
-            vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+            expiry = self._contract.get_expiry()
+            vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
-                greek = norm.pdf(d1) / (spot * vol * np.sqrt(tenor))
+                greek = norm.pdf(d1) / (spot * vol * np.sqrt(expiry))
             else:
                 self.__raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -185,13 +182,13 @@ class EuropeanAnalyticPricer(Pricer):
             greek = 0.0
             spot = self._model.get_initial_spot()
             strike = self._contract.get_strike()
-            tenor = self._contract.get_expiry()
-            vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+            expiry = self._contract.get_expiry()
+            vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(tenor)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
+            df = self._model.get_df(expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
-                greek = strike * df * norm.pdf(d2) * np.sqrt(tenor)
+                greek = strike * df * norm.pdf(d2) * np.sqrt(expiry)
             else:
                 self.__raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -205,16 +202,18 @@ class EuropeanAnalyticPricer(Pricer):
             greek = 0.0
             strike = self._contract.get_strike()
             spot = self._model.get_initial_spot()
-            tenor = self._contract.get_expiry()
-            vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+            expiry = self._contract.get_expiry()
+            vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(tenor)
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
+            df = self._model.get_df(expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
-                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(tenor)) + rate * strike * df * norm.cdf(d2))
+                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(expiry))
+                                + rate * strike * df * norm.cdf(d2))
             elif self._contract.get_type() == PutCallFwd.PUT:
-                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(tenor)) - rate * strike * df * norm.cdf(-d2))
+                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(expiry))
+                                - rate * strike * df * norm.cdf(-d2))
             else:
                 self.__raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -227,16 +226,16 @@ class EuropeanAnalyticPricer(Pricer):
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
             strike = self._contract.get_strike()
-            tenor = self._contract.get_expiry()
+            expiry = self._contract.get_expiry()
             spot = self._model.get_initial_spot()
-            vol = self._model.get_volgrid().get_vol(tenor, spot / strike)
+            vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(tenor)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, tenor)
+            df = self._model.get_df(expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
-                greek = strike * tenor * df * norm.cdf(d2)
+                greek = strike * expiry * df * norm.cdf(d2)
             elif self._contract.get_type() == PutCallFwd.PUT:
-                greek = -strike * tenor * df * norm.cdf(-d2)
+                greek = -strike * expiry * df * norm.cdf(-d2)
             else:
                 self.__raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -250,11 +249,11 @@ class EuropeanAnalyticPricer(Pricer):
 
 
 class GenericTreePricer(Pricer):
-    def __init__(self, contract: VanillaOptionContract, model: FlatVol, params: TreeParams):
+    def __init__(self, contract: VanillaContract, model: FlatVolModel, params: TreeParams):
         self._contract = contract
         self._model = model
         self._params = params
-        if (np.isnan(params._up_step_mult) or np.isnan(params._down_step_mult)):
+        if np.isnan(params.up_step_mult) or np.isnan(params.down_step_mult):
             tree_method = BalancedSimpleBinomialTree(params, model)
         else:
             tree_method = SimpleBinomialTree(params, model)
@@ -268,11 +267,12 @@ class GenericTreePricer(Pricer):
             log_spot = spot_tree[-1][i]
             discounted_price = self._tree_method._df[-1] * self._contract.payoff(np.exp(log_spot))
             price_tree[-1][i] = discounted_price
-        for step in range(self._params._nr_steps - 1,-1,-1):
+        for step in range(self._params.nr_steps - 1, -1, -1):
             for i in range(len(spot_tree[step])):
                 log_spot = spot_tree[step][i]
                 # discounted price is martingale
-                discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + self._tree_method._prob[1] * price_tree[step + 1][i + 1]
+                discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + \
+                                   self._tree_method._prob[1] * price_tree[step + 1][i + 1]
                 price_tree[step][i] = discounted_price
         return price_tree[0][0]
     

@@ -91,7 +91,6 @@ class ForwardContract(VanillaContract):
     def __init__(self, und: Stock, longshort: LongShort, strk: float, exp: float) -> None:
         super().__init__(und, PutCallFwd.FWD, longshort, strk, exp)
 
-
     def convert_to_generic(self) -> GenericContract:
         return GenericContract(self._contract, self._underlying, self._derivative_type,
                                self._derivative_longshort, self._strike, self._expiry)
@@ -101,7 +100,6 @@ class ForwardContract(VanillaContract):
 
 
 class EuropeanContract(VanillaContract):
-
     def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
@@ -121,7 +119,6 @@ class EuropeanContract(VanillaContract):
 
 
 class AmericanContract(VanillaContract):
-
     def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
@@ -141,7 +138,6 @@ class AmericanContract(VanillaContract):
 
 
 class EuropeanDigitalContract(VanillaContract):
-
     def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
@@ -161,7 +157,6 @@ class EuropeanDigitalContract(VanillaContract):
 
 
 class ExoticContract(Contract):
-
     def to_dict(self) -> dict[str, any]:
         return super().to_dict()
 
@@ -184,7 +179,6 @@ class ExoticContract(Contract):
 
 
 class AsianContract(ExoticContract):
-
     def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self._raise_incorrect_derivative_type()
@@ -195,7 +189,7 @@ class AsianContract(ExoticContract):
                                self._derivative_longshort, self._strike, self._expiry)
 
     def payoff(self, prices_und: float) -> float:
-    # TO DO: prices_und to derive from the underlying process using the timeline
+    # todo: prices_und to derive from the underlying process using the timeline
         if self._derivative_type == PutCallFwd.CALL:
             return self._direction * max(mean(prices_und) - self._strike, 0)
         elif self._derivative_type == PutCallFwd.PUT:
@@ -205,7 +199,6 @@ class AsianContract(ExoticContract):
 
 
 class EuropeanBarrierContract(ExoticContract):
-
     def __init__(self, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float,
                  barrier: float, updown: UpDown, inout: InOut) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT]:
@@ -237,8 +230,7 @@ class EuropeanBarrierContract(ExoticContract):
         return out
 
     def payoff(self, prices_und: float) -> float:
-    # TO DO: prices_und to derive from the underlying process using the timeline
-
+    # todo: prices_und to derive from the underlying process using the timeline
         mult = (self._inout == 'IN') * self.is_breached(prices_und) + \
                (self._inout == 'OUT') * (1 - self.is_breached(prices_und))
 
@@ -251,7 +243,6 @@ class EuropeanBarrierContract(ExoticContract):
 
 
 class GenericContract(ExoticContract):
-
     def __init__(self, contract: str, und: Stock, dtype: PutCallFwd, longshort: LongShort, strk: float, exp: float,
                  barrier: float = np.Inf, updown: UpDown = None, inout: InOut = None) -> None:
         if dtype not in [PutCallFwd.CALL, PutCallFwd.PUT, PutCallFwd.FWD]:
@@ -288,8 +279,7 @@ class GenericContract(ExoticContract):
         return self
 
     def payoff(self, prices_und: float) -> float:
-    # TO DO: prices_und to derive from the underlying process using the timeline
-
+    # todo: prices_und to derive from the underlying process using the timeline
         if self._contract == 'Forward':
             return self._direction * (prices_und - self._strike)
 
