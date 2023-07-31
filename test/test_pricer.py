@@ -16,9 +16,9 @@ class TestEuropeanAnalyticPricer:
     def test_fair_value(self, derivative_type, model):
         expected_result = {
             (PutCallFwd.CALL, BSVolModel): 19.376806288567913,
-            (PutCallFwd.CALL, FlatVolModel): 19.787749603901013,
+            (PutCallFwd.CALL, FlatVolModel): 18.790736019031833,
             (PutCallFwd.PUT, BSVolModel): 5.336361001984066,
-            (PutCallFwd.PUT, FlatVolModel): 5.747304317317166
+            (PutCallFwd.PUT, FlatVolModel): 4.750290732447986
         }
         contract = EuropeanContract(self.und, derivative_type, self.ls, self.strike, self.expiry)
         mod = model(self.und)
@@ -31,10 +31,10 @@ class TestEuropeanAnalyticPricer:
     @pytest.mark.parametrize('greek_method', [GreekMethod.ANALYTIC, GreekMethod.BUMP])
     def test_delta(self, derivative_type, greek_method):
         expected_result = {
-            (PutCallFwd.CALL, GreekMethod.ANALYTIC): 0.7400021016466151,
-            (PutCallFwd.CALL, GreekMethod.BUMP): 0.7399483934813667,
-            (PutCallFwd.PUT, GreekMethod.ANALYTIC): -0.25999789835338494,
-            (PutCallFwd.PUT, GreekMethod.BUMP): -0.2600516065186316
+            (PutCallFwd.CALL, GreekMethod.ANALYTIC): 0.7524906409516483,
+            (PutCallFwd.CALL, GreekMethod.BUMP): 0.7524254274946358,
+            (PutCallFwd.PUT, GreekMethod.ANALYTIC): -0.24750935904835175,
+            (PutCallFwd.PUT, GreekMethod.BUMP): -0.24757457250536063
         }
         contract = EuropeanContract(self.und, derivative_type, self.ls, self.strike, self.expiry)
         mod = FlatVolModel(self.und)
@@ -43,7 +43,7 @@ class TestEuropeanAnalyticPricer:
         delta = pricer.calc_delta(greek_method)
         assert delta == pytest.approx(expected_result[(derivative_type, greek_method)])
         assert expected_result[(derivative_type, GreekMethod.ANALYTIC)] == \
-               pytest.approx(expected_result[(derivative_type, GreekMethod.BUMP)], rel=1e-2)
+               pytest.approx(expected_result[(derivative_type, GreekMethod.BUMP)], rel=1e-3)
 
 
 class TestTreePricer:

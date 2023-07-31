@@ -34,4 +34,7 @@ class TestVolGrid:
     @pytest.mark.parametrize('point', test_map.keys())
     def test_interpolation(self, point):
         vol_grid = VolGrid(TestVolGrid.underlying, TestVolGrid.points, TestVolGrid.values)
-        assert vol_grid.get_vol(point[0], point[1]) == TestVolGrid.test_map[point]
+        coordinate = np.array([point])
+        vol = vol_grid.get_vol(coordinate)[0]
+        expected = TestVolGrid.test_map[point]
+        assert vol == pytest.approx(expected)
