@@ -37,8 +37,8 @@ class MarketData:
             if not os.path.exists(path):
                 raise FileNotFoundError(f'Volatility grid ({filename}) does not exist for underlying: {name}')
             data = pd.read_csv(path, header=0, dtype=float)
-            points = np.array((data['tenor'], data['moneyness'])).T
-            values = np.array(data['value'])
+            points = np.array((data['strike'], data['expiry']), dtype='float64').T
+            values = np.array(data['volatility'], dtype='float64')
             MarketData.__vol_grid[stock] = VolGrid(stock, points, values)
 
     @staticmethod
@@ -88,8 +88,13 @@ class VolGrid:
     def get_values(self) -> np.ndarray:
         return self.__values
 
-    def get_vol(self, tenor: float, moneyness: float) -> float:
-        return self.__interpolator((tenor, moneyness))
+    def get_vol(self, strike_expiry_pairs: np.ndarray) -> np.ndarray:
+        """
+        Interpolates/extrapolates volatility at vector of volgrid coordinates.
+        :param strike_expiry_pairs: Array of (strike, expiry) coordinates to interpolate at.
+        :return: Array of interpolated/extrapolated vols.
+        """
+        return self.__interpolator(strike_expiry_pairs)
 
 
 class LinearInterpolatorNearestExtrapolator:
@@ -97,8 +102,14 @@ class LinearInterpolatorNearestExtrapolator:
         self.__func_linear = LinearNDInterpolator(points, values)
         self.__func_nearest = NearestNDInterpolator(points, values)
 
-    def __call__(self, *args) -> float:
-        t = self.__func_linear(*args)
-        if np.isnan(t):
-            return self.__func_nearest(*args)
-        return t.item(0)
+    def __call__(self, points: np.ndarray) -> np.ndarray:
+        """
+        Evaluate interpolator at given points.
+        Piecewise linear interpolation inside the grid, flat extrapolation outside the grid.
+        :param points: Array of coordinates to interpolate at.
+        :return: Array of interpolated values.
+        """
+        interpolation = self.__func_linear(points)
+        mask = np.isnan(interpolation)
+        interpolation[mask] = self.__func_nearest(points[mask])
+        return interpolation
