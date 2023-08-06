@@ -1,6 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import copy
+
+import numpy as np
+
 from src.enums import *
 from src.contract import *
 from src.model import *
@@ -300,5 +303,22 @@ class GenericPDEPricer(Pricer):
 
 # todo: to be implemented
 class GenericMCPricer(Pricer):
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
+        self._contract = contract
+        self._model = model
+        self._params = params
+        super().__init__()
+
     def calc_fair_value(self) -> float:
-        raise NotImplementedError('Fair value is not implemented yet for GenericMCPricer.')
+        mc_method = MCMethod(self._model, self._params)
+        contract = self._contract
+        contractual_timeline = contract.get_timeline()
+        spot_paths = mc_method.simulate_spot_paths(contractual_timeline)
+        num_of_paths = 1
+        path_payoff = np.empty(num_of_paths)
+        for path in range(num_of_paths):
+            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
+            path_payoff[path] = contract.payoff(fixing_schedule)
+        maturity = contract.get_expiry()
+        fv = mean(path_payoff) * self._model.get_df(maturity)
+        return fv

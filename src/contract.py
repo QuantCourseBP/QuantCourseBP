@@ -67,6 +67,10 @@ class Contract(ABC):
     def get_timeline(self) -> list[float]:
         pass
 
+    @abstractmethod
+    def payoff(self, fixing_schedule: dict[float, float]) -> float:
+        pass
+
     def _raise_incorrect_derivative_type(self):
         raise TypeError(f'Derivative type of {type(self).__name__} must be CALL or PUT')
 
@@ -95,7 +99,9 @@ class ForwardContract(VanillaContract):
         return GenericContract(self._contract, self._underlying, self._derivative_type,
                                self._derivative_longshort, self._strike, self._expiry)
 
-    def payoff(self, spot: float) -> float:
+    def payoff(self, fixings: map[float, float]) -> float:
+        expiry = self.get_expiry()
+        spot = fixings[expiry]
         return self._direction * (spot - self._strike)
 
 

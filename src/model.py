@@ -39,7 +39,7 @@ class MarketModel(ABC):
         pass
 
     @abstractmethod
-    def get_simulated_spot(self, expiry: float, strike: float, z: float) -> float:
+    def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
         pass
 
     @staticmethod
@@ -67,10 +67,11 @@ class BSVolModel(MarketModel):
         coordinate = np.array([(atm_strike, expiry)])
         return self._volgrid.get_vol(coordinate)[0]
 
-    def get_simulated_spot(self, expiry: float, strike: float, z: float) -> float:
+    def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
         rate = self._interest_rate
         vol = self.get_vol(strike, expiry)
-        return np.exp((rate - 0.5 * vol**2) * expiry + (vol * z * np.sqrt(expiry)))
+        dt = t_to - t_from
+        return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 class FlatVolModel(MarketModel):

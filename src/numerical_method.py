@@ -21,26 +21,48 @@ class MCMethod(NumericalMethod):
             raise TypeError('Params must be an instance of class MCParams')
         super().__init__(model, params)
 
-    def generate_std_norm(self) -> np.array:
+    def find_simulation_tenors(self, contract_timeline: list[float]) -> list[float]:
+        final_tenor = max(contract_timeline)
+        dt = 1 / self._params.tenor_frequency
+        num_of_tenors = int(final_tenor / dt)
+        model_tenors = [i * dt for i in range(num_of_tenors)]
+        all_simul_tenors = sorted(model_tenors + contract_timeline)
+        return all_simul_tenors
 
+    def generate_std_norm(self, num_of_tenors: int) -> np.array:
         np.random.seed(self._params.seed)
-
         if self._params.antithetic:
-            rnd1 = np.random.standard_normal(size=(int(self._params.num_of_paths / 2), self._params.num_of_tenors))
+            rnd1 = np.random.standard_normal(size=(int(self._params.num_of_paths / 2), num_of_tenors))
             rnd2 = -rnd1
             rnd = np.concatenate((rnd1, rnd2), axis=0)
             if self._params.num_of_paths % 2 == 1:
                 zeros = np.zeros((1, self._params.num_of_tenors))
                 rnd = np.concatenate((rnd, zeros), axis=0)
-
         else:
             rnd = np.random.standard_normal(size=(self._params.num_of_paths, self._params.num_of_tenors))
-
         if self._params.standardize:
             mean = np.mean(rnd)
             std = np.std(rnd)
             rnd = (rnd - mean) / std
         return rnd
+
+    def simulate_spot_paths(self, contract_tenors: list[float]):
+        model = self._model
+        simulation_tenors = self.find_simulation_tenors(contract_tenors)
+        num_of_tenors = len(simulation_tenors)
+        num_of_paths = self._params.num_of_paths
+        rnd_num = self.generate_std_norm(num_of_tenors)
+        spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
+        initial_spot = model.get_initial_spot()
+        for path in range(num_of_paths):
+            for t_idx in range(num_of_tenors):
+                t_from = simulation_tenors[t_idx-1]
+                t_to = simulation_tenors[t_idx]
+                spot_from = initial_spot if t_idx == 0 else spot_paths[path, t_idx-1]
+                z = rnd_num[path, t_idx]
+                spot_paths[path, t_idx] = model.evolve_simulated_spot(t_from, t_to, spot_from, z)
+        contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
+        return spot_paths[:, contract_tenor_idx]
 
 
 class MCMethodFlatVol(MCMethod):
@@ -170,7 +192,7 @@ class MCParams(Params):
         # todo: to be implemented, a few examples:
         self.seed: int = 0
         self.num_of_paths: int = 100
-        self.tenors: np.array = [1]
+        self.tenor_frequency: int = 12
         self.standardize: bool = True
         self.antithetic: bool = True
 
