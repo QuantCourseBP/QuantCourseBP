@@ -35,7 +35,7 @@ class MarketModel(ABC):
         return np.exp(-1.0 * self._interest_rate * tenor)
 
     @abstractmethod
-    def get_vol(self, strike: float, expiry: float) -> np.ndarray:
+    def get_vol(self, strike: float, expiry: float) -> float:
         pass
 
     @abstractmethod
