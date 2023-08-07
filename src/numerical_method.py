@@ -14,7 +14,6 @@ class NumericalMethod(ABC):
         return {cls.__name__: cls for cls in NumericalMethod.__subclasses__()}
 
 
-# todo: to be implemented
 class MCMethod(NumericalMethod):
     def __init__(self, model: MarketModel, params: MCParams):
         if not isinstance(params, MCParams):
@@ -65,32 +64,6 @@ class MCMethod(NumericalMethod):
         return spot_paths[:, contract_tenor_idx]
 
 
-class MCMethodFlatVol(MCMethod):
-    def __init__(self, model: FlatVolModel, params: MCParams):
-        super().__init__(model, params)
-
-    def create_spot_paths(self) -> np.array:
-
-        std_norm = self.generate_std_norm()
-
-        rf_rate = self._model.get_rate()
-        vol = self._model.vol
-        log_proc_drift = rf_rate - 1 / 2 * vol * vol
-
-        s0 = self.index.level
-
-        log_ret_paths = np.zeros((self.num_of_paths, self.num_of_tenors + 1))
-
-        for path in range(self.num_of_paths):
-            log_ret_paths[path][0] = 0
-
-        for path in range(self.num_of_paths):
-            for tenor_idx in range(1, self.num_of_tenors + 1):
-                d_time = self.tenors[tenor_idx] - self.tenors[tenor_idx - 1]
-                log_ret_paths[path][tenor_idx] = log_ret_paths[path][
-                                                     tenor_idx - 1] + log_proc_drift * d_time + vol * np.sqrt(d_time) * \
-                                                 std_norm[path][tenor_idx - 1]
-        return s0 * np.exp(log_ret_paths)
 
 # todo: to be implemented
 class PDEMethod(NumericalMethod):
@@ -106,12 +79,12 @@ class SimpleBinomialTree(NumericalMethod):
         self._spot_tree_built = False
         self._df_computed = False
         self._prob_computed = False
-        
+
     def init_tree(self):
         self.build_spot_tree()
         self.compute_df()
-        self.compute_prob()        
-        
+        self.compute_prob()
+
     def build_spot_tree(self):
         if self._spot_tree_built:
             pass
@@ -126,10 +99,10 @@ class SimpleBinomialTree(NumericalMethod):
             new_level += [previous_level[-1] + self._up_log_step]
             tree += [new_level]
             previous_level = new_level
-        
+
         self._spot_tree = tree
         self._spot_tree_built = True
-        
+
     def compute_df(self):
         if self._df_computed:
             pass
@@ -137,7 +110,7 @@ class SimpleBinomialTree(NumericalMethod):
         df_1_step = self._model.get_df(delta_t)
         self._df = [df_1_step**k for k in range(self._params.nr_steps + 1)]
         self._df_computed = True
-        
+
     def compute_prob(self):
         if self._prob_computed:
             pass
