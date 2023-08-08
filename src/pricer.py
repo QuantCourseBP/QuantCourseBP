@@ -325,7 +325,7 @@ class EuropeanAnalyticPricer(Pricer):
 
 
 class GenericTreePricer(Pricer):
-    def __init__(self, contract: VanillaContract, model: FlatVolModel, params: TreeParams):
+    def __init__(self, contract: Contract, model: MarketModel, params: TreeParams):
         self._contract = contract
         self._model = model
         self._params = params
@@ -341,11 +341,11 @@ class GenericTreePricer(Pricer):
         price_tree = [[np.nan for _ in level] for level in spot_tree]
         for i in range(len(spot_tree[-1])):
             log_spot = spot_tree[-1][i]
-            discounted_price = self._tree_method._df[-1] * self._contract.payoff(np.exp(log_spot))
+            spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
+            discounted_price = self._tree_method._df[-1] * self._contract.payoff(spot)
             price_tree[-1][i] = discounted_price
         for step in range(self._params.nr_steps - 1, -1, -1):
             for i in range(len(spot_tree[step])):
-                log_spot = spot_tree[step][i]
                 # discounted price is martingale
                 discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + \
                                    self._tree_method._prob[1] * price_tree[step + 1][i + 1]

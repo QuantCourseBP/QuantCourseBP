@@ -80,7 +80,7 @@ class SimpleBinomialTree(NumericalMethod):
 
 
 class BalancedSimpleBinomialTree(SimpleBinomialTree):
-    def __init__(self, params: TreeParams, model: FlatVolModel):
+    def __init__(self, params: TreeParams, model: MarketModel):
         up = BalancedSimpleBinomialTree.calc_up_step_mult(
             model.get_rate(),
             model.get_vol(params.strike, params.exp),

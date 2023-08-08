@@ -5,7 +5,7 @@ from src.pricer import *
 MarketData.initialize()
 
 
-@pytest.mark.parametrize('ref_strike', [0.9, 1.0])
+@pytest.mark.parametrize('strike', [0.9, 1.0])
 @pytest.mark.parametrize('expiry', [0.5, 2.0])
 class TestForwardAnalyticPricer:
     MarketData.initialize()
@@ -14,26 +14,26 @@ class TestForwardAnalyticPricer:
     model = FlatVolModel(und)
     method = AnalyticMethod(model)
 
-    def test_fair_value(self, ref_strike, expiry):
+    def test_fair_value(self, strike, expiry):
         expected_result = {
             (round(0.9, 1), round(0.5, 1)): 12.22210791745006,
             (round(0.9, 1), round(2.0, 1)): 18.56463237676364,
             (round(1.0, 1), round(0.5, 1)): 2.4690087971667367,
             (round(1.0, 1), round(2.0, 1)): 9.516258196404053
         }
-        strike = ref_strike * MarketData.get_initial_spot()[self.und]
-        contract = ForwardContract(self.und, self.ls, strike, expiry)
+        strike_level = strike * MarketData.get_initial_spot()[self.und]
+        contract = ForwardContract(self.und, self.ls, strike_level, expiry)
         pricer = ForwardAnalyticPricer(contract, self.model, self.method)
         fv = pricer.calc_fair_value()
-        assert fv == pytest.approx(expected_result[(round(ref_strike, 1), round(expiry, 1))])
+        assert fv == pytest.approx(expected_result[(round(strike, 1), round(expiry, 1))])
 
     @pytest.mark.parametrize('greek_method', [GreekMethod.ANALYTIC, GreekMethod.BUMP])
-    def test_delta(self, ref_strike, expiry, greek_method):
+    def test_delta(self, strike, expiry, greek_method):
         expected_result = {
             GreekMethod.ANALYTIC: 1.0,
             GreekMethod.BUMP: 1.0
         }
-        strike = ref_strike * MarketData.get_initial_spot()[self.und]
+        strike = strike * MarketData.get_initial_spot()[self.und]
         contract = ForwardContract(self.und, self.ls, strike, expiry)
         pricer = ForwardAnalyticPricer(contract, self.model, self.method)
         delta = pricer.calc_delta(greek_method)
