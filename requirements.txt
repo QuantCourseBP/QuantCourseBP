@@ -3,3 +3,4 @@ pandas
 pytest
 scipy
 matplotlib
+jupyter

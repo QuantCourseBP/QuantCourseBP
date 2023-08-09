@@ -101,9 +101,88 @@ class Pricer(ABC):
     def _raise_unsupported_greek_method_error(
             self,
             method: str,
-            supported: tuple[GreekMethod] = (x.value for x in GreekMethod)) -> None:
+            supported: tuple[GreekMethod] = (_.value for _ in GreekMethod)) -> None:
         raise ValueError(f'Unsupported GreekMethod {method} for Pricer {type(self).__name__}. '
                          f'Supported methods are: {", ".join(supported)}')
+
+
+class ForwardAnalyticPricer(Pricer):
+    __supported_deriv_type: tuple = (PutCallFwd.FWD,)
+
+    def __init__(self, contract: ForwardContract, model: MarketModel, method: AnalyticMethod):
+        if not isinstance(contract, ForwardContract):
+            raise TypeError(f'Contract must be of type ForwardContract but received {type(contract).__name__}')
+        if not isinstance(method, AnalyticMethod):
+            raise TypeError(f'Method must be of type AnalyticMethod but received {type(method).__name__}')
+        super().__init__(contract, model, method)
+
+    def calc_fair_value(self) -> float:
+        direction = self._contract.get_direction()
+        spot = self._model.get_initial_spot()
+        strike = self._contract.get_strike()
+        expiry = self._contract.get_expiry()
+        df = self._model.get_df(expiry)
+        if self._contract.get_type() == PutCallFwd.FWD:
+            return direction * (spot - strike * df)
+        else:
+            self._contract.raise_incorrect_derivative_type_error(self.__supported_deriv_type)
+
+    def calc_delta(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            return 1.0
+        elif method == GreekMethod.BUMP:
+            return super().calc_delta(method)
+        else:
+            self._raise_unsupported_greek_method_error(method)
+
+    def calc_gamma(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            return 0.0
+        elif method == GreekMethod.BUMP:
+            return super().calc_gamma(method)
+        else:
+            self._raise_unsupported_greek_method_error(method)
+
+    def calc_vega(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            return 0.0
+        elif method == GreekMethod.BUMP:
+            return super().calc_vega(method)
+        else:
+            self._raise_unsupported_greek_method_error(method)
+
+    def calc_theta(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            strike = self._contract.get_strike()
+            expiry = self._contract.get_expiry()
+            rate = self._model.get_rate()
+            df = self._model.get_df(expiry)
+            if self._contract.get_type() == PutCallFwd.FWD:
+                greek = -1.0 * strike * df * rate
+            else:
+                self._contract.raise_incorrect_derivative_type_error(self.__supported_deriv_type)
+            return self._contract.get_direction() * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_theta(method)
+        else:
+            self._raise_unsupported_greek_method_error(method)
+
+    def calc_rho(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            strike = self._contract.get_strike()
+            expiry = self._contract.get_expiry()
+            df = self._model.get_df(expiry)
+            if self._contract.get_type() == PutCallFwd.FWD:
+                greek = strike * df * expiry
+            else:
+                self._contract.raise_incorrect_derivative_type_error(self.__supported_deriv_type)
+            return self._contract.get_direction() * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_rho(method)
+        else:
+            self._raise_unsupported_greek_method_error(method)
 
 
 class EuropeanAnalyticPricer(Pricer):
@@ -138,7 +217,7 @@ class EuropeanAnalyticPricer(Pricer):
         elif self._contract.get_type() == PutCallFwd.PUT:
             return direction * (strike * df * norm.cdf(-d2) - spot * norm.cdf(-d1))
         else:
-            self.__raise_incorrect_derivative_type_error()
+            self._contract.raise_incorrect_derivative_type_error()
 
     def calc_delta(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
@@ -154,7 +233,7 @@ class EuropeanAnalyticPricer(Pricer):
             elif self._contract.get_type() == PutCallFwd.PUT:
                 greek = -norm.cdf(-d1)
             else:
-                self.__raise_incorrect_derivative_type_error()
+                self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
         elif method == GreekMethod.BUMP:
             return super().calc_delta(method)
@@ -173,7 +252,7 @@ class EuropeanAnalyticPricer(Pricer):
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = norm.pdf(d1) / (spot * vol * np.sqrt(expiry))
             else:
-                self.__raise_incorrect_derivative_type_error()
+                self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
         elif method == GreekMethod.BUMP:
             return super().calc_gamma(method)
@@ -193,7 +272,7 @@ class EuropeanAnalyticPricer(Pricer):
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = strike * df * norm.pdf(d2) * np.sqrt(expiry)
             else:
-                self.__raise_incorrect_derivative_type_error()
+                self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
         elif method == GreekMethod.BUMP:
             return super().calc_vega(method)
@@ -218,7 +297,7 @@ class EuropeanAnalyticPricer(Pricer):
                 greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(expiry))
                                 - rate * strike * df * norm.cdf(-d2))
             else:
-                self.__raise_incorrect_derivative_type_error()
+                self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
         elif method == GreekMethod.BUMP:
             return super().calc_theta(method)
@@ -240,19 +319,16 @@ class EuropeanAnalyticPricer(Pricer):
             elif self._contract.get_type() == PutCallFwd.PUT:
                 greek = -strike * expiry * df * norm.cdf(-d2)
             else:
-                self.__raise_incorrect_derivative_type_error()
+                self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
         elif method == GreekMethod.BUMP:
             return super().calc_rho(method)
         else:
             self._raise_unsupported_greek_method_error(method)
 
-    def __raise_incorrect_derivative_type_error(self) -> None:
-        raise ValueError(f'Derivative type of {type(self._contract).__name__} must be CALL or PUT')
-
 
 class GenericTreePricer(Pricer):
-    def __init__(self, contract: VanillaContract, model: FlatVolModel, params: TreeParams):
+    def __init__(self, contract: Contract, model: MarketModel, params: TreeParams):
         self._contract = contract
         self._model = model
         self._params = params
@@ -268,11 +344,11 @@ class GenericTreePricer(Pricer):
         price_tree = [[np.nan for _ in level] for level in spot_tree]
         for i in range(len(spot_tree[-1])):
             log_spot = spot_tree[-1][i]
-            discounted_price = self._tree_method._df[-1] * self._contract.payoff(np.exp(log_spot))
+            spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
+            discounted_price = self._tree_method._df[-1] * self._contract.payoff(spot)
             price_tree[-1][i] = discounted_price
         for step in range(self._params.nr_steps - 1, -1, -1):
             for i in range(len(spot_tree[step])):
-                log_spot = spot_tree[step][i]
                 # discounted price is martingale
                 discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + \
                                    self._tree_method._prob[1] * price_tree[step + 1][i + 1]
