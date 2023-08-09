@@ -389,8 +389,8 @@ class GenericMCPricer(Pricer):
         mc_method = MCMethod(self._model, self._params)
         contract = self._contract
         contractual_timeline = contract.get_timeline()
-        spot_paths = mc_method.simulate_spot_paths(contractual_timeline)
-        num_of_paths = 1
+        spot_paths = mc_method.simulate_spot_paths(contract)
+        num_of_paths = mc_method._params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
             fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))

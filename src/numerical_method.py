@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC
 from src.model import *
 import numpy as np
+from contract import Contract
 
 
 class NumericalMethod(ABC):
@@ -46,21 +47,23 @@ class MCMethod(NumericalMethod):
             rnd = (rnd - mean) / std
         return rnd
 
-    def simulate_spot_paths(self, contract_tenors: list[float]):
+    def simulate_spot_paths(self, contract: Contract):
         model = self._model
+        contract_tenors = contract.get_timeline()
         simulation_tenors = self.find_simulation_tenors(contract_tenors)
         num_of_tenors = len(simulation_tenors)
         num_of_paths = self._params.num_of_paths
         rnd_num = self.generate_std_norm(num_of_tenors)
         spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
         initial_spot = model.get_initial_spot()
+        vol = model.get_vol(contract.get_strike(), contract.get_expiry())
         for path in range(num_of_paths):
             for t_idx in range(num_of_tenors):
                 t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
                 spot_from = initial_spot if t_idx == 0 else spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
-                spot_paths[path, t_idx] = model.evolve_simulated_spot(t_from, t_to, spot_from, z)
+                spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
         return spot_paths[:, contract_tenor_idx]
 

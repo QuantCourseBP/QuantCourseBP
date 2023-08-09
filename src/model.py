@@ -38,6 +38,10 @@ class MarketModel(ABC):
     def get_vol(self, strike: float, expiry: float) -> float:
         pass
 
+    @abstractmethod
+    def evolve_simulated_spot(self, vol: float, t_from: float, t_to: float, spot_from: float, z: float) -> float:
+        pass
+
     @staticmethod
     def get_models() -> dict[str, MarketModel]:
         return {cls.__name__: cls for cls in MarketModel.__subclasses__()}
