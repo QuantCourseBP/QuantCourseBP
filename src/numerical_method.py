@@ -14,6 +14,7 @@ class NumericalMethod(ABC):
         return {cls.__name__: cls for cls in NumericalMethod.__subclasses__()}
 
 
+# todo: to be implemented
 class MCMethod(NumericalMethod):
     def __init__(self, model: MarketModel, params: MCParams):
         if not isinstance(params, MCParams):
@@ -55,14 +56,13 @@ class MCMethod(NumericalMethod):
         initial_spot = model.get_initial_spot()
         for path in range(num_of_paths):
             for t_idx in range(num_of_tenors):
-                t_from = simulation_tenors[t_idx-1]
+                t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
-                spot_from = initial_spot if t_idx == 0 else spot_paths[path, t_idx-1]
+                spot_from = initial_spot if t_idx == 0 else spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
                 spot_paths[path, t_idx] = model.evolve_simulated_spot(t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
         return spot_paths[:, contract_tenor_idx]
-
 
 
 # todo: to be implemented
@@ -108,7 +108,7 @@ class SimpleBinomialTree(NumericalMethod):
             pass
         delta_t = self._params.exp / self._params.nr_steps
         df_1_step = self._model.get_df(delta_t)
-        self._df = [df_1_step**k for k in range(self._params.nr_steps + 1)]
+        self._df = [df_1_step ** k for k in range(self._params.nr_steps + 1)]
         self._df_computed = True
 
     def compute_prob(self):
@@ -116,14 +116,14 @@ class SimpleBinomialTree(NumericalMethod):
             pass
         if not self._df_computed:
             self._compute_df()
-        p = (1/self._df[1] - np.exp(self._down_log_step))/(np.exp(self._up_log_step) - np.exp(self._down_log_step))
+        p = (1 / self._df[1] - np.exp(self._down_log_step)) / (np.exp(self._up_log_step) - np.exp(self._down_log_step))
         q = 1 - p
         self._prob = (p, q)
         self._prob_computed = True
 
 
 class BalancedSimpleBinomialTree(SimpleBinomialTree):
-    def __init__(self, params: TreeParams, model: FlatVolModel):
+    def __init__(self, params: TreeParams, model: MarketModel):
         up = BalancedSimpleBinomialTree.calc_up_step_mult(
             model.get_rate(),
             model.get_vol(params.strike, params.exp),
@@ -140,13 +140,13 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
     @staticmethod
     def calc_up_step_mult(rate: float, vol: float, nr_steps: int, exp: float) -> float:
         delta_t = exp / nr_steps
-        log_mean = rate * delta_t - 0.5 * vol**2 * delta_t
+        log_mean = rate * delta_t - 0.5 * vol ** 2 * delta_t
         return np.exp(log_mean + vol * np.sqrt(delta_t))
 
     @staticmethod
     def calc_down_step_mult(rate: float, vol: float, nr_steps: int, exp: float) -> float:
         delta_t = exp / nr_steps
-        log_mean = rate * delta_t - 0.5 * vol**2 * delta_t
+        log_mean = rate * delta_t - 0.5 * vol ** 2 * delta_t
         return np.exp(log_mean - vol * np.sqrt(delta_t))
 
 
@@ -165,9 +165,7 @@ class MCParams(Params):
         # todo: to be implemented, a few examples:
         self.seed: int = 0
         self.num_of_paths: int = 100
-        self.tenor_frequency: int = 12
-        self.standardize: bool = True
-        self.antithetic: bool = True
+        self.timestep: int = 10
 
 
 class PDEParams(Params):
