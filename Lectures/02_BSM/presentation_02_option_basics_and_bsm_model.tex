@@ -1,0 +1,598 @@
+\documentclass[ignorenonframetext, 9pt]{beamer}
+
+\usetheme{Marburg}
+\usecolortheme{rose}
+\usefonttheme{structurebold}
+
+\usepackage{verbatim}
+
+\usepackage{ragged2e}
+
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{xcolor}
+\usetikzlibrary{calc, shapes, backgrounds, scopes, decorations}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{array}
+\usepackage{tcolorbox}
+\usepackage{thmtools}
+\usepackage{multirow}
+
+
+\newcommand{\luk}{\hspace*{\fill} \linebreak}
+
+\newtheorem{de}{Definition}
+\newtheorem{te}{Theorem}
+
+\definecolor{myblue}{RGB}{97, 173, 231}
+\definecolor{myred}{RGB}{255, 130, 130}
+\definecolor{mygreen}{RGB}{149, 247, 106}
+\definecolor{myyellow}{RGB}{255, 255, 140}
+\definecolor{mydarkblue}{RGB}{3, 95, 166}
+\definecolor{mydarkred}{RGB}{250, 70, 70}
+
+\definecolor{newblue}{RGB}{0,105,198}
+\definecolor{temablue}{RGB}{55,51,178}
+
+
+\renewcommand{\arraystretch}{1.5}
+\everymath{\displaystyle}
+
+\title{Option Basics and BSM model}
+\subtitle{}
+\author{Romsics, Erzsébet}
+
+\begin{document}
+
+\begin{frame}
+	\begin{center}
+	\textcolor{temablue}{\Large \textbf{Option Basics and the Black-Scholes-Merton Model}\\}
+	
+	\vspace*{1cm}
+	\large Romsics, Erzsébet
+	\end{center}
+\end{frame}
+
+\frame{\tableofcontents}
+
+\section{Simple derivatives}
+
+\subsection{Discounting}
+
+\begin{frame}
+\frametitle{Why do we use discounting?}
+
+\pause
+
+There are riskless investments on the market, e.g. investing in Treasury bonds. \newline
+
+
+If we have \$100 dollars, we can do the followings:
+\begin{itemize}
+\item put it in the freezer, so at any time, we can defrost it and have \$100.
+\item invest in Treasury Bonds, which gives us $r$ coupon per annum, so we'll have \$100 + \$$\frac{r}{100}$ one year from now
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Why do we use discounting?}
+
+So if we lend money, we should always think about that investing the same amount would generate us income, and if the investment is riskless, this income is guaranteed. \newline
+
+That is why money has a \textit{time value}.
+\end{frame}
+
+\begin{frame}
+\frametitle{Compounding strategies}
+
+Let assume $r$ is the risk-free interest rate, at which money is borrowed or lent with no credit risk, so the money is certain to be paid. \newline
+
+\pause
+
+We have $N$ amount of money to invest for $t$ years, then our payoff depends on the compound frequency: \newline
+
+{
+\footnotesize
+\begin{tabular}{ >{\centering\arraybackslash}p{0.3\textwidth} | >{\centering\arraybackslash}p{0.3\textwidth} | >{\centering\arraybackslash}p{0.3\textwidth} }
+Investing the money every year & Investing the money $m$ times a year & Investing the money continuously \\ \hline
+\(\displaystyle N \cdot (1 + r)^t \) & \(\displaystyle N \cdot \left( 1 + \frac{r}{m}\right) ^{m \cdot t} \)
+& \(\displaystyle N \cdot e^{r\cdot t} \) \\
+\end{tabular}
+}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Compounding strategies}
+
+$N$ is called the \textbf{present value} of our investment, while $N \cdot e^{r\cdot t}$ is the \textbf{future value}. \newline
+
+I.e. a price of a bond which pays $n$ cashflows during its life has a present value of
+\begin{equation}
+            PV = \sum_{i=1}^n Cashflow_i \cdot e^{-r_i \cdot t_i}
+\end{equation}
+
+\end{frame}
+
+
+\subsection{Forwards}
+
+
+\begin{frame}
+\frametitle{Forward contract}
+
+\begin{de}
+A \textbf{spot contract} an agreement to buy or sell an asset, e.g. a stock almost immediately. Its price is called \textbf{spot price}, and we refer to it as $S_0$
+\end{de}
+
+\pause
+
+\begin{de}
+A \textbf{forward contract} an agreement to buy or sell an asset at a certain future time for a certain price. This date when the sale is made is called \textbf{maturity} (or expiry) of the contract, and it is denoted by $T$. \\
+$S_T$ is the spot price of the underlying at maturity $T$.
+\end{de}
+
+\vfill
+
+\centering long vs short position
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{What is the payoff of this forward contract?}
+
+The \textbf{payoff} from a long position on one unit of an asset is
+\begin{equation}
+S_T - K
+\end{equation}
+where $K$ is the delivery price. \newline
+
+\pause
+
+Similarly, the payoff from a short position on one unit of an asset is
+\begin{equation}
+K - S_T
+\end{equation}
+
+\pause
+
+\vfill
+\begin{tcolorbox}[text width=\textwidth/4, boxrule=3pt, colback=mygreen!5!white, colframe=mygreen!75!black]
+\textcolor{mygreen!50!black}{Let's code a little, shall we?}
+\end{tcolorbox}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the value of this forward contract at time $t$?}
+
+
+At time $0$,
+\begin{equation}
+f(0, S_0) = S_0 - e^{-rT} \cdot K
+\end{equation} \newline
+
+\pause
+
+During the lifetime of the contract, the \textbf{value of the forward} contract must be the same as the value of this portfolio, which means at any time $t$
+\begin{equation}
+f(t, S_t) = S_t - e^{-r(T-t)} \cdot K
+\end{equation}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What if the price of this portfolio does not match the forward value?}
+
+E.g. if $f(0, S_0) > S_0 - e^{-rT} \cdot K$, then we can sell the forward contract for $f(0, S_0)$ and buy the same porfolio for $S_0 - e^{-rT} \cdot K$, which leads to an instant income. \newline
+
+\pause
+
+This is called an \textbf{arbitrage} opportunity on the market. \newline
+
+\begin{de}
+\textbf{Arbitrage} is a simultaneous purchase and sale of the same (or very similar) product on different markets in order to gain from the price differences, which is considered as a riskless profit.
+\end{de}
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the delivery price of this forward contract?}
+
+Entering into a forward contract does not need any money exchange, no cash is flowing between the parties till the expiry of the contract. Thus it does not worth anything at time 0. \newline
+
+\pause
+
+It means that $K$ is determined to satisfy $S_0 - e^{-rT} \cdot K = 0$, thus:
+\begin{equation}
+K = S_0 \cdot e^{rT} =: F_0^T
+\end{equation} \newline
+
+\pause
+
+This $F_0^T$ is called the \textbf{forward price} at time $0$. \newline
+
+
+If $K$ does not satisfies the above equality, it leads to arbitrage opportunities. \newline
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the difference between the value of forward and the price of forward?}
+
+The forward price is something fixed at the initialization of the contract, while the forward value changes during the life of the contact: it is zero initially at time $0$, but changes to either positive or negative as the market evolves to time $T$. 
+
+\end{frame}
+
+
+\subsection{Call Options}
+
+
+\begin{frame}
+\frametitle{Call Options}
+
+\begin{de}
+A \textbf{call option} gives the option holder the right to \textit{buy} the underlying asset by a certain date for a certain price. This predefined price for sale is called \textbf{strike price}. The option seller on the other hand must \textit{sell} the underlying if the option is exercised.
+\end{de}
+
+\pause
+
+The date when the option is exercised can be very different depending on the style of the trade. The most simple construction is called \textbf{European call option}, when the option can be exercised only on a predefined date, which is called the \textbf{maturity} (or exercise date) of the option.
+
+\pause
+
+\vfill
+\color{red}
+IMPORTANT: \\
+The holder does not have to exercise the option, only if he/she wants.
+\color{black}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the benefit of this construction?}
+
+Let's assume that, we received a call option as a gift which says if we want, we can buy a stock of Abracadabra Inc. for \$100 one year from now. \newline
+
+Let's think through the following scenarios:
+
+\begin{itemize}
+\item Scenario A: the price of the stock rises to \$120 in a year
+
+\item Scenario B: the price of the stock falls to \$90 in a year
+\end{itemize}
+
+\vfill
+\centering seller's point of view
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the payoff of this call option contract?}
+
+The \textbf{payoff} of the call option is 
+\begin{equation}
+max\lbrace S_T - K, 0\rbrace
+\end{equation}
+
+\pause
+
+\vfill
+\begin{tcolorbox}[text width=\textwidth/3, boxrule=3pt, colback=mygreen!5!white, colframe=mygreen!75!black]
+\textcolor{mygreen!50!black}{Jump back to coding!}
+\end{tcolorbox}
+
+\end{frame}
+
+\subsection{Put Options}
+
+\begin{frame}
+\frametitle{Put Options}
+
+\begin{de}
+A \textbf{put option} gives the option holder the right to \textit{sell} the underlying asset by a certain date for a certain price. Similarly to the call option, this predefined price is called \textbf{strike price}. The option seller on the other hand must \textit{buy} the underlying if the option is exercised.
+\end{de}
+
+Analogously, a \textbf{European put option} can be only exercised on the maturity date of the option.
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the benefit of this construction?}
+
+Let's assume that we just bought an Abracadabra Inc. stock from the market which worth \$100 now, and we bought a put option which says we'll have the chance to sell the stock for \$100 one year from now. \newline 
+
+Let's think through the same scenarios:
+
+\begin{itemize}
+\item Scenario A: the price of the stock rises to \$120 in a year
+
+\item Scenario B: the price of the stock falls to \$90 in a year
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What is the payoff of this put option contract?}
+
+The \textbf{payoff} of the put option is 
+\begin{equation}
+min\lbrace K - S_T, 0\rbrace
+\end{equation}
+
+\pause
+
+\vfill
+\begin{tcolorbox}[text width=\textwidth/4, boxrule=3pt, colback=mygreen!5!white, colframe=mygreen!75!black]
+\textcolor{mygreen!50!black}{Coding? Again?!}
+\end{tcolorbox}
+
+\end{frame}
+
+\section{Relationship of Forward, Call and Put prices}
+
+\begin{frame}
+\frametitle{Relationship of Forward, Call and Put prices}
+
+Consider the following two portfolios: \newline
+\begin{itemize}
+\item Portfolio X: one European call option + a zero-coupon bond that provides a payoff of $K$ at time $T$
+
+\item Portfolio Y: one European put option + one share of the stock
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{What are the payoffs of these portfolios?}
+{
+\footnotesize
+\begin{tabular}{cc|c|c}
+&& $S_t > K$ & $S_T < K$ \\ \hline
+\multirow{2}{*}{Portfolio X} & Call Option & $S_T - K$ & 0 \\
+& Zero-coupon bond & $K$ & $K$ \\ \hline
+& \textbf{Total} & $S_T$ & $K$ \\
+\end{tabular}
+}
+
+\vspace{1cm}
+\pause
+
+{
+\footnotesize
+\begin{tabular}{cc|c|c}
+&& $S_t > K$ & $S_T < K$ \\ \hline
+\multirow{2}{*}{Portfolio Y} & Put Option & 0 & $K - S_T$  \\
+& Zero-coupon bond & $S_T$ & $S_T$ \\ \hline
+& \textbf{Total} & $S_T$ & $K$ \\
+\end{tabular}
+}
+
+\vspace{1cm}
+\pause
+
+So the payoff of both portfolios when the option expire at time $T$ is
+\begin{equation*}
+max\lbrace S_T, K\rbrace
+\end{equation*}
+
+\end{frame}
+
+\subsection{Put-Call Parity}
+
+\begin{frame}
+\frametitle{Put-Call Parity}
+
+If we want to avoid arbitrage possibilities, the portfolios must have identical values today. \newline
+
+The components of Portfolio X are worth $c$ and $K\cdot e^{-rT}$ today, and the components of Portfolio Y are worth $p$ and $S_0$ today. \newline
+
+Hence the following applies:
+\begin{equation}
+c + K\cdot e^{-rT} = p + S_0
+\end{equation}
+
+\pause
+
+For any $ 0 \leq t \leq T$:
+\begin{equation}
+c_t + K\cdot e^{-r\cdot(T-t)} = p_t + S_t
+\end{equation}
+
+which equality is called \textbf{Put-Call Parity}. \newline
+
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Put-Call Parity}
+
+It shows that we can deduce the price of the put from the price of the call with the same strike price and maturity date, and vica versa. \newline
+
+\pause
+
+With a small rearrangement, we'll get the following equality:
+
+\begin{equation}
+c_t - p_t = S_t - K\cdot e^{-r\cdot(T-t)}
+\end{equation}
+
+which shows that a long call plus a short put option payoff is the same as a long forward payoff.
+\end{frame}
+
+\section{The Black-Scholes-Merton differential equation}
+
+\begin{frame}
+\frametitle{The Black-Scholes-Merton Formula - Assumptions}
+
+Assumptions:
+
+\pause
+
+\begin{itemize}[<+->]
+\item underlying stock price follows a geometric Brownian Motion
+  \begin{equation}
+    dS_t = \mu S_t dt + \sigma S_t dW_t
+  \end{equation}
+\item the $r$ risk-free interest rate is constant over time and identical for all expiries, and money can be borrowed or lent at any time at this rate
+\item no arbitrage opportunities are present on the market
+\item trading is open continuously, and we can buy any partial amounts
+\item stocks pays no dividend, i.e. no cash payment comes from the stock
+\item no transaction costs are issued (e.g. taxes or fees)
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Black-Scholes-Merton Formula - Derivation}
+
+Let's define $f(t, S_t)$ as the price of the derivative. \newline
+
+\pause
+
+As stated by Ito's lemma,
+\begin{equation}
+df = f'_t dt + f'_S \cdot \mu S_t dt + f'_S \cdot \sigma S_t dW_t + \frac{1}{2}\cdot f''_{SS} \sigma^2 S_t^2 dt
+\end{equation} \newline
+
+\pause
+
+One important note is that the Wiener process under $S$ and $f$ are the same, which allows use to create a portfolio of the derivative and its underlying and eliminate the Wiener process. \newline
+
+The elimination of $W_t$ means that the portfolio is riskless (but only for a short amount of time).
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Black-Scholes-Merton Formula - Derivation}
+
+\begin{equation}
+    dS_t = \mu S_t dt + \color{red}\sigma S_t dW_t \color{black}
+\end{equation}
+\begin{equation}
+df = f'_t dt + f'_S \cdot \mu S_t dt + \color{red} f'_S \cdot \sigma S_t dW_t \color{black} + \frac{1}{2}\cdot f''_{SS} \sigma^2 S_t^2 dt
+\end{equation} \newline
+
+\pause
+
+Thus one unit of short position from the derivative and $f'_S$ amount of stock position gives us the riskless portfolio: 
+\begin{equation}
+\Pi := -f + f'_S \cdot S
+\end{equation} \newline
+
+\pause
+
+In differential form, by substituting $df$ and $dS_t$, we get:
+\begin{equation}
+d\Pi = -f'_t dt - \frac{1}{2} f''_{SS} \cdot \sigma^2 S_t^2 dt
+\end{equation}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Black-Scholes-Merton Formula - Derivation}
+
+If this portfolio is riskless, then it earns the risk-free interest rate which means
+\begin{equation}
+d\Pi = r\Pi dt
+\end{equation} \newline
+
+\pause
+
+Using the two equations, we get a non-stochastic PDE:
+\begin{equation}
+-f'_t dt - \frac{1}{2} f''_{SS} \cdot \sigma^2 S_t^2 dt = -r \cdot f + r\cdot f'_S \cdot S_t
+\end{equation}
+which is called the \textbf{Black-Scholes-Merton formula} of derivative pricing. \newline
+
+\end{frame}
+
+\begin{frame}
+\frametitle{The Black-Scholes-Merton Formula - Derivation}
+
+
+The price of each derivative which depends on a non-dividend-paying stock must satisfy this equation, otherwise arbitrage opportunities will appear on the market. \newline
+
+\pause
+
+Since the portfolio is riskless on for a short period of time, the amount $f'_S$ must be recalculated frequently, which is called \textit{rebalancing} of the portfolio.\\
+
+In particular, $f'_S$ is called the \textbf{delta} of the option.
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{BSM PDE Solution}
+
+To solve the above PDE, we need to have boundary conditions, which specify the values of the derivative at the boundaries of possible values of $S$ and $t$. \newline
+
+\pause
+
+For example, if we would like to price a European call option, we know the payoff at time $T$, which leads to the condition of
+\begin{equation}
+f = max(S_T - K, 0)
+\end{equation} \newline
+
+\end{frame}
+
+\begin{frame}
+\frametitle{BSM PDE Solution}
+
+By solving the PDE for the call option, we end up with the following price:
+
+\begin{equation}
+c = S_0 \cdot N(d_1) - K\cdot e^{-rT} \cdot N(d_2)
+\end{equation}
+where $N$ is the cumulative distribution function of the standard normal distribution, and
+\begin{equation*}
+d_1 = \frac{log(S_0 / K) + (r + \sigma^2 / 2)T}{\sigma\sqrt{T}}  \quad \text{ and } \quad d_2 = d_1 - \sigma\sqrt{T}.
+\end{equation*}
+
+\pause
+
+\vfill
+\begin{tcolorbox}[text width=\textwidth/4, boxrule=3pt, colback=mygreen!5!white, colframe=mygreen!75!black]
+\textcolor{mygreen!50!black}{Git out and code!}
+\end{tcolorbox}
+
+\end{frame}
+
+\section{Greeks}
+
+\begin{frame}
+\frametitle{Greeks}
+
+{
+\footnotesize
+\begin{tabular}{c | c}
+\textbf{Greek} & \textbf{Formula} \\ \hline
+Delta $\Delta = c'_S$ & $N(d_1)$ \\ \hline
+
+Vega $\mathcal{V} = c'_\sigma$ & $S_t \cdot N'_\sigma(d_1) \cdot\sqrt{T-t}$ \\ \hline
+
+Theta $\Theta = c'_\tau$ & $-S_t \cdot N'_t(d_1)\cdot \frac{\sigma}{2\sqrt{T-t}} - r\cdot K\cdot e^{-r(T-t)}\cdot N(d_2)$ \\ \hline
+
+Rho $\rho = c'_r$ & $K\cdot (T-t)\cdot e^{-r(T-t)}\cdot N(d_2)$ \\ \hline
+
+Gamma $\Gamma = \Delta'_S = c''_{SS}$ & $N'_S(d_1) \cdot \frac{1}{S_t\cdot\sigma\sqrt{T-t}}$ \\
+\end{tabular}
+}
+
+\end{frame}
+
+\begin{frame}
+\centering Thank you for your kind attention!
+\end{frame}
+
+\end{document}

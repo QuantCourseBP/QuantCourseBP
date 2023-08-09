@@ -6,3 +6,12 @@
 
 # virtual environment
 venv_quant_course_v39/
+
+# TeX outputs
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
