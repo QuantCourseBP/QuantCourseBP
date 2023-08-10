@@ -205,8 +205,8 @@ class BlackScholesPDE(PDEMethod):
         self._derivative_type = params.contract_type
         self.S_min = params.S_min
         self.S_max = params.S_max
-        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step)))  # Number of time steps
-        self.nt_steps = int(np.round(params.exp / float(self.t_step)))  # Number of stock price steps
+        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step)))  # Number of stock price steps
+        self.nt_steps = int(np.round(params.exp / float(self.t_step)))   # Number of time steps
         self._interest_rate = model.get_rate()
         self.grid = np.zeros((self.nt_steps + 1, self.ns_steps + 1))
         self.P, self.Q, self.R = self.tridiagonal_matrix()
@@ -235,12 +235,12 @@ class BlackScholesPDE(PDEMethod):
     def implicit_method(self):
         self.setup_boundary_conditions()
         for j in range(self.nt_steps, 0, -1):
-            self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.Q, self.grid[j, :]))
+            self.grid[j - 1, 1:self.ns_steps] = np.linalg.solve(self.P, np.dot(self.Q, self.grid[j, 1:self.ns_steps]))
 
     def crank_nicolson_method(self):
         self.setup_boundary_conditions()
         for j in range(self.nt_steps, 0, -1):
-            self.grid[j - 1, :] = np.linalg.solve(self.P, np.dot(self.R, self.grid[j, :]))
+            self.grid[j - 1, 1:self.ns_steps] = np.linalg.solve(self.P, np.dot(self.R, self.grid[j, 1:self.ns_steps]))
 
     def tridiagonal_matrix(self):
         alpha = -0.5 * self.t_step * (self.sigma ** 2 * np.arange(1, self.ns_steps) ** 2 - self._interest_rate * np.arange(1, self.ns_steps))

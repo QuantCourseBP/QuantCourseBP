@@ -383,8 +383,8 @@ class GenericPDEPricer(Pricer):
         self.und_step = params.s_step
         self.S_min = params.S_min
         self.S_max = params.S_max
-        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step))) # Number of stock price steps
-        self.t_step = int(np.round(params.exp / float(self.t_step)))  # Number of time steps
+        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step)))  # Number of stock price steps
+        self.nt_steps = int(np.round(params.exp / float(self.t_step)))  # Number of time steps
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
@@ -406,7 +406,8 @@ class GenericPDEPricer(Pricer):
         if down == up:
             return self.grid[1, down+1]
         else:
-            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * (self._initial_spot - down*self.und_step)/self.und_step
+            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
+                   (self._initial_spot - self.S_min - down*self.und_step)/self.und_step
 
     def calc_delta(self, method: GreekMethod) -> float:
         raise NotImplementedError('Greeks are not implemented for tree method yet.')
