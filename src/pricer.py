@@ -400,14 +400,13 @@ class GenericPDEPricer(Pricer):
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
 
         # linear interpolation
-        down = np.floor((self._initial_spot - self.S_min)/self.und_step)
-        up = np.ceil((self._initial_spot - self.S_min)/self.und_step)
+        down = int(np.floor((self._initial_spot - self.S_min)/self.und_step))
+        up = int(np.ceil((self._initial_spot - self.S_min)/self.und_step))
 
         if down == up:
-            return self.grid[down+1, 1]
+            return self.grid[1, down+1]
         else:
-          return self.grid[down+1, 1] + (self.grid[up+1, 1] - self.grid[down+1, 1]) * (self._initial_spot - down*self.und_step)/self.und_step
-
+            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * (self._initial_spot - down*self.und_step)/self.und_step
 
     def calc_delta(self, method: GreekMethod) -> float:
         raise NotImplementedError('Greeks are not implemented for tree method yet.')

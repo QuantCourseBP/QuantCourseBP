@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 from src.model import *
 import numpy as np
-from contract import Contract
+from src.contract import Contract
 
 
 class NumericalMethod(ABC):
