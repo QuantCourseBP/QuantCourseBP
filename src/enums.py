@@ -42,7 +42,7 @@ class GreekMethod(str, Enum):
     BUMP: str = 'BUMP'
 
 
-class PDEMethod(str, Enum):
+class BSPDEMethod(str, Enum):
     EXPLICIT: str = 'EXPLICIT'
     IMPLICIT: str = 'IMPLICIT'
     CRANKNICOLSON: str = 'CRANKNICOLSON'

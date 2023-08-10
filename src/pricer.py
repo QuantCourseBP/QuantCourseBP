@@ -300,24 +300,35 @@ class GenericPDEPricer(Pricer):
         self._initial_spot = model.get_initial_spot()
         self._strike = contract.get_strike()
         self._interest_rate = model.get_rate()
-        self.nt_steps = params.nt_steps
-        self.ns_steps = params.ns_steps
-        self.und_step = self._initial_spot / float(self.ns_steps)  # Number of time steps
-        self.t_step = params.exp / float(self.nt_steps)  # Number of stock price steps
+        self.t_step = params.t_step
+        self.und_step = params.s_step
+        self.S_min = params.S_min
+        self.S_max = params.S_max
+        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step))) # Number of stock price steps
+        self.t_step = int(np.round(params.exp / float(self.t_step)))  # Number of time steps
+        self.method = params.method
+        self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
-    def calc_fair_value(self, method=PDEMethod.EXPLICIT) -> float:
-        self.setup_boundary_conditions()
+    def calc_fair_value(self) -> float:
 
-        if method.upper() == PDEMethod.EXPLICIT:
+        if self.method.upper() == BSPDEMethod.EXPLICIT:
             self._bsPDE.explicit_method()
-        elif method.upper() == PDEMethod.IMPLICIT:
+        elif self.method.upper() == BSPDEMethod.IMPLICIT:
             self._bsPDE.implicit_method()
-        elif method.upper() == PDEMethod.CRANKNICOLSON:
+        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
             self._bsPDE.crank_nicolson_method()
         else:
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
 
-        return self.grid[0, self.ns_steps // 2]  # Return the option price at S0
+        # linear interpolation
+        down = np.floor((self._initial_spot - self.S_min)/self.und_step)
+        up = np.ceil((self._initial_spot - self.S_min)/self.und_step)
+
+        if down == up:
+            return self.grid[down+1, 1]
+        else:
+          return self.grid[down+1, 1] + (self.grid[up+1, 1] - self.grid[down+1, 1]) * (self._initial_spot - down*self.und_step)/self.und_step
+
 
     def calc_delta(self, method: GreekMethod) -> float:
         raise NotImplementedError('Greeks are not implemented for tree method yet.')

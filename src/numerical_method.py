@@ -116,13 +116,16 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, exp: float, strike: float, dtype: PutCallFwd, ns_steps: int, nt_steps: int) -> None:
+    def __init__(self, exp: float, strike: float, dtype: PutCallFwd, s_step: int, t_step: int, S_min: int, S_max: int, method: str) -> None:
         # todo: to be implemented
         self.exp = exp  # Time to maturity
-        self.ns_steps = ns_steps  # Number of stock price steps
-        self.nt_steps = nt_steps  # Number of time steps
+        self.s_step = s_step  # dS
+        self.t_step = t_step  # dt
         self.strike = strike
         self.contract_type = dtype   # CALL or PUT
+        self.S_min = S_min
+        self.S_max = S_max
+        self.method = method
 
 
 class TreeParams(Params):
@@ -140,13 +143,13 @@ class BlackScholesPDE(PDEMethod):
         self.exp = params.exp
         self.strike = params.strike
         self.sigma = model.get_vol(self.exp, model.get_initial_spot()/self.strike)
-        self.nt_steps = params.nt_steps
-        self.ns_steps = params.ns_steps
+        self.t_step = params.t_step
+        self.und_step = params.s_step
         self._derivative_type = params.contract_type
-        self.S_min = 0
-        self.S_max = 2 * model.get_initial_spot()   # maximum stock Price
-        self.und_step = model.get_initial_spot() / float(self.ns_steps)  # Number of time steps
-        self.t_step = params.exp / float(self.nt_steps)  # Number of stock price steps
+        self.S_min = params.S_min
+        self.S_max = params.S_max
+        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step)))  # Number of time steps
+        self.nt_steps = int(np.round(params.exp / float(self.t_step)))  # Number of stock price steps
         self._interest_rate = model.get_rate()
         self.grid = np.zeros((self.nt_steps + 1, self.ns_steps + 1))
         self.P, self.Q, self.R = self.tridiagonal_matrix()
