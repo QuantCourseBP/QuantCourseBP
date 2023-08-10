@@ -3,3 +3,6 @@
 **/__pycache__
 *.pyc
 *.patch
+
+# virtual environment
+venv_quant_course_v39/
