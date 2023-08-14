@@ -11,7 +11,7 @@ class MarketModel(ABC):
     def __init__(self, und: Stock):
         self._und = und
         self._interest_rate = MarketData.get_risk_free_rate()
-        self._initial_spot = MarketData.get_initial_spot()[self._und]
+        self._spot = MarketData.get_spot()[self._und]
         self._volgrid = MarketData.get_vol_grid()[self._und]
 
     def get_rate(self) -> float:
@@ -20,16 +20,16 @@ class MarketModel(ABC):
     def bump_rate(self, bump_size: float) -> None:
         self._interest_rate += bump_size
 
-    def get_initial_spot(self) -> float:
-        return self._initial_spot
+    def get_spot(self) -> float:
+        return self._spot
 
-    def bump_initial_spot(self, bump_size: float) -> None:
-        self._initial_spot += bump_size
+    def bump_spot(self, bump_size: float) -> None:
+        self._spot += bump_size
 
     def bump_volgrid(self, bump_size: float) -> None:
         values = self._volgrid.get_values()
         values += bump_size
-        self._volgrid = VolGrid(self._volgrid.get_und(), self._volgrid.get_points(), values)
+        self._volgrid = VolGrid(self._volgrid.get_underlying(), self._volgrid.get_points(), values)
 
     def get_df(self, tenor: float) -> float:
         return np.exp(-1.0 * self._interest_rate * tenor)
@@ -52,7 +52,7 @@ class BSVolModel(MarketModel):
         super().__init__(und)
         # Reference spot is used to calculate ATM strike to imply the volatility.
         # Its value is not bumped in case of greek calculation.
-        self.__reference_spot = MarketData.get_initial_spot()[self._und]
+        self.__reference_spot = MarketData.get_spot()[self._und]
 
     def get_vol(self, strike: float, expiry: float) -> float:
         """
