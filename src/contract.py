@@ -27,7 +27,7 @@ class Contract(ABC):
     def get_contract_type(self) -> str:
         return self._contract_type
 
-    def get_und(self) -> Stock:
+    def get_underlying(self) -> Stock:
         return self._underlying
 
     def get_type(self) -> PutCallFwd:
@@ -45,21 +45,18 @@ class Contract(ABC):
     def get_expiry(self) -> float:
         return self._expiry
 
-    def set_expiry(self, expiry: float) -> None:
-        self._expiry = float(expiry)
-
     def __str__(self) -> str:
         return str(self.to_dict())
 
     def to_dict(self) -> dict[str, any]:
         return {
-            "contract": self._contract_type,
-            "underlying": self._underlying,
-            "type": self._derivative_type,
-            "long_short": self._long_short,
-            "strike": self._strike,
-            "expiry": self._expiry,
-            "observations": self._num_mon
+            'contract': self._contract_type,
+            'underlying': self._underlying,
+            'type': self._derivative_type,
+            'long_short': self._long_short,
+            'strike': self._strike,
+            'expiry': self._expiry,
+            'observations': self._num_mon
         }
 
     @abstractmethod

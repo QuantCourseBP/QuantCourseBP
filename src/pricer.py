@@ -1,23 +1,23 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import copy
-
 import numpy as np
-
+from scipy.stats import norm
 from src.enums import *
 from src.contract import *
 from src.model import *
 from src.numerical_method import *
-from scipy.stats import norm
 
 
 class Pricer(ABC):
     RELATIVE_BUMP_SIZE: float = 0.01
+    # only for theta calculation via bump and revaluation
+    __valuation_time: float = 0.0
 
-    def __init__(self, contract: Contract, model: MarketModel, method: NumericalMethod):
-        self._contract = contract
-        self._model = model
-        self._method = method
+    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+        self._contract: Contract = contract
+        self._model: MarketModel = model
+        self._params: Params | MCParams | PDEParams | TreeParams = params
 
     @staticmethod
     def get_pricers() -> dict[str, Pricer]:
@@ -30,12 +30,12 @@ class Pricer(ABC):
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_initial_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
-            model.bump_initial_spot(b)
-            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._method)
+            model.bump_spot(b)
+            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -44,12 +44,12 @@ class Pricer(ABC):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_initial_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
-            model.bump_initial_spot(b)
-            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._method)
+            model.bump_spot(b)
+            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -66,7 +66,7 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
             model.bump_volgrid(b)
-            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._method)
+            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -75,14 +75,12 @@ class Pricer(ABC):
     def calc_theta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = 1.0 / 252.0
-        contract = copy.deepcopy(self._contract)
-        contract.set_expiry(self._contract.get_expiry() + bump_size)
-        bumped_pricer = globals()[type(self).__name__](contract, self._model, self._method)
+        bump_size = 1.0 / 365.0
+        bumped_pricer = copy.deepcopy(self)
+        bumped_pricer.__valuation_time += bump_size
         bumped_fair_value = bumped_pricer.calc_fair_value()
         del bumped_pricer
-        del contract
-        return -1.0 * (bumped_fair_value - self.calc_fair_value()) / bump_size
+        return (bumped_fair_value - self.calc_fair_value()) / bump_size
 
     def calc_rho(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
@@ -92,11 +90,14 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
             model.bump_rate(b)
-            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._method)
+            bumped_pricer = globals()[type(self).__name__](self._contract, model, self._params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
         return (bumped_fair_values[0] - bumped_fair_values[1]) / (2 * bump_size)
+
+    def _get_valuation_time(self) -> float:
+        return self.__valuation_time
 
     def _raise_unsupported_greek_method_error(
             self,
@@ -107,21 +108,19 @@ class Pricer(ABC):
 
 
 class ForwardAnalyticPricer(Pricer):
-    __supported_deriv_type: tuple = (PutCallFwd.FWD,)
+    __supported_deriv_type: tuple[PutCallFwd, ...] = (PutCallFwd.FWD,)
 
-    def __init__(self, contract: ForwardContract, model: MarketModel, method: AnalyticMethod):
+    def __init__(self, contract: ForwardContract, model: MarketModel, params: Params):
         if not isinstance(contract, ForwardContract):
             raise TypeError(f'Contract must be of type ForwardContract but received {type(contract).__name__}')
-        if not isinstance(method, AnalyticMethod):
-            raise TypeError(f'Method must be of type AnalyticMethod but received {type(method).__name__}')
-        super().__init__(contract, model, method)
+        super().__init__(contract, model, params)
 
     def calc_fair_value(self) -> float:
         direction = self._contract.get_direction()
-        spot = self._model.get_initial_spot()
+        spot = self._model.get_spot()
         strike = self._contract.get_strike()
-        expiry = self._contract.get_expiry()
-        df = self._model.get_df(expiry)
+        time_to_expiry = self._contract.get_expiry() - self._get_valuation_time()
+        df = self._model.get_df(time_to_expiry)
         if self._contract.get_type() == PutCallFwd.FWD:
             return direction * (spot - strike * df)
         else:
@@ -155,9 +154,9 @@ class ForwardAnalyticPricer(Pricer):
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
             strike = self._contract.get_strike()
-            expiry = self._contract.get_expiry()
+            time_to_expiry = self._contract.get_expiry() - self._get_valuation_time()
             rate = self._model.get_rate()
-            df = self._model.get_df(expiry)
+            df = self._model.get_df(time_to_expiry)
             if self._contract.get_type() == PutCallFwd.FWD:
                 greek = -1.0 * strike * df * rate
             else:
@@ -172,10 +171,10 @@ class ForwardAnalyticPricer(Pricer):
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
             strike = self._contract.get_strike()
-            expiry = self._contract.get_expiry()
-            df = self._model.get_df(expiry)
+            time_to_expiry = self._contract.get_expiry() - self._get_valuation_time()
+            df = self._model.get_df(time_to_expiry)
             if self._contract.get_type() == PutCallFwd.FWD:
-                greek = strike * df * expiry
+                greek = strike * df * time_to_expiry
             else:
                 self._contract.raise_incorrect_derivative_type_error(self.__supported_deriv_type)
             return self._contract.get_direction() * greek
@@ -187,31 +186,30 @@ class ForwardAnalyticPricer(Pricer):
 
 class EuropeanAnalyticPricer(Pricer):
     @staticmethod
-    def d1(spot: float, strike: float, vol: float, rate: float, tenor: float):
-        return 1 / (vol * np.sqrt(tenor)) * (np.log(spot / strike) + (rate + vol**2 / 2) * tenor)
+    def d1(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float):
+        return 1 / (vol * np.sqrt(time_to_expiry)) * (np.log(spot / strike) + (rate + vol**2 / 2) * time_to_expiry)
 
     @staticmethod
-    def d2(spot: float, strike: float, vol: float, rate: float, tenor: float):
-        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, tenor)
-        return d1 - vol * np.sqrt(tenor)
+    def d2(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float):
+        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+        return d1 - vol * np.sqrt(time_to_expiry)
 
-    def __init__(self, contract: EuropeanContract, model: MarketModel, method: AnalyticMethod):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: Params):
         if not isinstance(contract, EuropeanContract):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
-        if not isinstance(method, AnalyticMethod):
-            raise TypeError(f'Method must be of type AnalyticMethod but received {type(method).__name__}')
-        super().__init__(contract, model, method)
+        super().__init__(contract, model, params)
 
     def calc_fair_value(self) -> float:
         direction = self._contract.get_direction()
         strike = self._contract.get_strike()
         expiry = self._contract.get_expiry()
-        spot = self._model.get_initial_spot()
+        time_to_expiry = expiry - self._get_valuation_time()
+        spot = self._model.get_spot()
         vol = self._model.get_vol(strike, expiry)
         rate = self._model.get_rate()
-        df = self._model.get_df(expiry)
-        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
-        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
+        df = self._model.get_df(time_to_expiry)
+        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
         if self._contract.get_type() == PutCallFwd.CALL:
             return direction * (spot * norm.cdf(d1) - strike * df * norm.cdf(d2))
         elif self._contract.get_type() == PutCallFwd.PUT:
@@ -222,12 +220,13 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_delta(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_initial_spot()
+            spot = self._model.get_spot()
             strike = self._contract.get_strike()
             expiry = self._contract.get_expiry()
+            time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = norm.cdf(d1)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -243,14 +242,15 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_initial_spot()
+            spot = self._model.get_spot()
             strike = self._contract.get_strike()
             expiry = self._contract.get_expiry()
+            time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
-                greek = norm.pdf(d1) / (spot * vol * np.sqrt(expiry))
+                greek = norm.pdf(d1) / (spot * vol * np.sqrt(time_to_expiry))
             else:
                 self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -262,15 +262,16 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_vega(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_initial_spot()
+            spot = self._model.get_spot()
             strike = self._contract.get_strike()
             expiry = self._contract.get_expiry()
+            time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
+            df = self._model.get_df(time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
-                greek = strike * df * norm.pdf(d2) * np.sqrt(expiry)
+                greek = strike * df * norm.pdf(d2) * np.sqrt(time_to_expiry)
             else:
                 self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -283,18 +284,19 @@ class EuropeanAnalyticPricer(Pricer):
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
             strike = self._contract.get_strike()
-            spot = self._model.get_initial_spot()
+            spot = self._model.get_spot()
             expiry = self._contract.get_expiry()
+            time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(expiry)
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
+            df = self._model.get_df(time_to_expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
-                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(expiry))
+                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(time_to_expiry))
                                 + rate * strike * df * norm.cdf(d2))
             elif self._contract.get_type() == PutCallFwd.PUT:
-                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(expiry))
+                greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(time_to_expiry))
                                 - rate * strike * df * norm.cdf(-d2))
             else:
                 self._contract.raise_incorrect_derivative_type_error()
@@ -309,15 +311,16 @@ class EuropeanAnalyticPricer(Pricer):
             greek = 0.0
             strike = self._contract.get_strike()
             expiry = self._contract.get_expiry()
-            spot = self._model.get_initial_spot()
+            time_to_expiry = expiry - self._get_valuation_time()
+            spot = self._model.get_spot()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            df = self._model.get_df(expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, expiry)
+            df = self._model.get_df(time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
-                greek = strike * expiry * df * norm.cdf(d2)
+                greek = strike * time_to_expiry * df * norm.cdf(d2)
             elif self._contract.get_type() == PutCallFwd.PUT:
-                greek = -strike * expiry * df * norm.cdf(-d2)
+                greek = -strike * time_to_expiry * df * norm.cdf(-d2)
             else:
                 self._contract.raise_incorrect_derivative_type_error()
             return self._contract.get_direction() * greek
@@ -328,14 +331,16 @@ class EuropeanAnalyticPricer(Pricer):
 
 
 class GenericTreePricer(Pricer):
-    def __init__(self, contract: Contract, model: MarketModel, params: TreeParams):
-        self._contract = contract
-        self._model = model
-        self._params = params
-        if np.isnan(params.up_step_mult) or np.isnan(params.down_step_mult):
-            tree_method = BalancedSimpleBinomialTree(params, model)
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: TreeParams):
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+        if not isinstance(params, TreeParams):
+            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        if np.isnan(self._params.up_step_mult) or np.isnan(self._params.down_step_mult):
+            tree_method = BalancedSimpleBinomialTree(self._contract, self._model, self._params)
         else:
-            tree_method = SimpleBinomialTree(params, model)
+            tree_method = SimpleBinomialTree(self._contract, self._model, self._params)
         self._tree_method = tree_method
 
     def calc_fair_value(self) -> float:
@@ -354,37 +359,26 @@ class GenericTreePricer(Pricer):
                                    self._tree_method._prob[1] * price_tree[step + 1][i + 1]
                 price_tree[step][i] = discounted_price
         return price_tree[0][0]
-    
-    def calc_delta(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_gamma(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_vega(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_theta(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_rho(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
 
 
-class GenericPDEPricer(Pricer):
+class BlackScholesPDEPricer(Pricer):
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+        if not isinstance(params, PDEParams):
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         self._derivative_type = contract.get_type()
-        self._bsPDE = BlackScholesPDE(model, params)
+        self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
-        self._initial_spot = model.get_initial_spot()
+        self._initial_spot = model.get_spot()
         self._strike = contract.get_strike()
         self._interest_rate = model.get_rate()
-        self.t_step = params.t_step
-        self.und_step = params.s_step
-        self.S_min = params.S_min
-        self.S_max = params.S_max
-        self.ns_steps = int(np.round((self.S_max - self.S_min) / float(self.und_step)))  # Number of stock price steps
-        self.nt_steps = int(np.round(params.exp / float(self.t_step)))  # Number of time steps
+        self.t_step = params.time_step
+        self.und_step = params.und_step
+        self.stock_min = params.stock_min
+        self.stock_max = params.stock_max
+        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
+        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
@@ -400,44 +394,26 @@ class GenericPDEPricer(Pricer):
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
 
         # linear interpolation
-        down = int(np.floor((self._initial_spot - self.S_min)/self.und_step))
-        up = int(np.ceil((self._initial_spot - self.S_min)/self.und_step))
+        down = int(np.floor((self._initial_spot - self.stock_min)/self.und_step))
+        up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
 
         if down == up:
             return self.grid[1, down+1]
         else:
             return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
-                   (self._initial_spot - self.S_min - down*self.und_step)/self.und_step
+                   (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
 
-    def calc_delta(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
 
-    def calc_gamma(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_vega(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_theta(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-    def calc_rho(self, method: GreekMethod) -> float:
-        raise NotImplementedError('Greeks are not implemented for tree method yet.')
-
-# todo: to be implemented
 class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
-        self._contract = contract
-        self._model = model
-        self._params = params
-        super().__init__()
+        super().__init__(contract, model, params)
+        self._mc_method = MCMethod(self._contract, self._model, self._params)
 
     def calc_fair_value(self) -> float:
-        mc_method = MCMethod(self._model, self._params)
         contract = self._contract
         contractual_timeline = contract.get_timeline()
-        spot_paths = mc_method.simulate_spot_paths(contract)
-        num_of_paths = mc_method._params.num_of_paths
+        spot_paths = self._mc_method.simulate_spot_paths()
+        num_of_paths = self._params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
             fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))

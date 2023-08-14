@@ -8,10 +8,10 @@ MarketData.initialize()
 
 
 class TestContractProperties:
-    underlying = Stock.EXAMPLE1
+    underlying = Stock.TEST_COMPANY
     derivative_type = PutCallFwd.CALL
     long_short = LongShort.LONG
-    ref_spot = MarketData.get_initial_spot()[underlying]
+    ref_spot = MarketData.get_spot()[underlying]
     strike = 1.0 * ref_spot
     expiry = 1.0
 
@@ -36,8 +36,8 @@ class TestContractProperties:
 @pytest.mark.parametrize('spot', np.arange(0.5, 2, 0.5))
 @pytest.mark.parametrize('strike', np.arange(0.5, 2, 0.5))
 class TestPayoff:
-    underlying = Stock.EXAMPLE1
-    ref_spot = MarketData.get_initial_spot()[underlying]
+    underlying = Stock.TEST_COMPANY
+    ref_spot = MarketData.get_spot()[underlying]
     long_short = LongShort.LONG
     expiry = 1.0
 
@@ -66,8 +66,8 @@ class TestPayoff:
 @pytest.mark.parametrize('strike', np.arange(0.5, 2, 0.5))
 @pytest.mark.parametrize('long_short', [LongShort.LONG, LongShort.SHORT])
 class TestGenericPayoff:
-    underlying = Stock.EXAMPLE1
-    ref_spot = MarketData.get_initial_spot()[underlying]
+    underlying = Stock.TEST_COMPANY
+    ref_spot = MarketData.get_spot()[underlying]
     expiry = 2.0
 
     @pytest.mark.parametrize('spot', np.arange(0.5, 2, 0.5))
