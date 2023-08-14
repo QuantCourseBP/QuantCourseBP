@@ -210,20 +210,20 @@ class BlackScholesPDE(PDEMethod):
         if self.derivative_type == PutCallFwd.CALL:
             self.grid[0, :] = np.maximum(np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1) - self.strike, 0)
             self.grid[:, -1] = (self.stock_max - self.strike) * np.exp(
-                -self.interest_rate * self.t_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
 
         else:
             self.grid[0, :] = np.maximum(self.strike - np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1), 0)
             self.grid[:, -1] = (self.strike - self.stock_max) * np.exp(
-                -self.interest_rate * self.t_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
 
     def explicit_method(self):
         self.setup_boundary_conditions()
         for j in range(1, self.num_of_time_steps + 1):
             for i in range(1, self.num_of_und_steps):
-                alpha = 0.5 * self.t_step * (self.sigma ** 2 * i ** 2 - self.interest_rate * i)
-                beta = 1 - self.t_step * (self.sigma ** 2 * i ** 2 + self.interest_rate)
-                gamma = 0.5 * self.t_step * (self.sigma ** 2 * i ** 2 + self.interest_rate * i)
+                alpha = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 - self.interest_rate * i)
+                beta = 1 - self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate)
+                gamma = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate * i)
                 self.grid[j, i] = alpha * self.grid[j - 1, i - 1] + beta * self.grid[j - 1, i] + gamma * self.grid[
                     j - 1, i + 1]
 
@@ -238,9 +238,9 @@ class BlackScholesPDE(PDEMethod):
             self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.P, np.dot(self.R, self.grid[j, 1:self.num_of_und_steps]))
 
     def tridiagonal_matrix(self):
-        alpha = -0.5 * self.t_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 - self.interest_rate * np.arange(1, self.ns_steps))
-        beta = 1 + self.t_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate)
-        gamma = -0.5 * self.t_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate * np.arange(1, self.ns_steps))
+        alpha = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 - self.interest_rate * np.arange(1, self.num_of_und_steps))
+        beta = 1 + self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate)
+        gamma = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate * np.arange(1, self.num_of_und_steps))
 
         matrix_first_entry = np.diag(alpha[1:], -1) + np.diag(beta) + np.diag(gamma[:-1], 1)
         matrix_second_entry = np.diag(-alpha[1:], -1) + np.diag(1 - beta) + np.diag(-gamma[:-1], 1)
