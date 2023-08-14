@@ -16,7 +16,7 @@ class MarketData:
     __is_initialized: bool = False
 
     def __new__(cls) -> None:
-        raise TypeError('Static class cannot be instantiated')
+        raise RuntimeError('Static class cannot be instantiated')
 
     @staticmethod
     def __load_spot() -> None:
