@@ -5,7 +5,7 @@ from src.market_data import VolGrid
 
 
 class TestVolGrid:
-    underlying = Stock.EXAMPLE1
+    underlying = Stock.TEST_COMPANY
     points = np.array([(0.0, 0.0), (0.0, 1.0), (1.0, 0.0), (1.0, 1.0)])
     values = np.array([0.5, 0.5, 1.0, 2.0])
     test_map = {

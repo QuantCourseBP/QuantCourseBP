@@ -2,9 +2,10 @@ from enum import Enum
 
 
 class Stock(str, Enum):
-    # todo: replace EXAMPLE stocks with meaningful names
-    EXAMPLE1: str = 'EXAMPLE1'
-    EXAMPLE2: str = 'EXAMPLE2'
+    TEST_COMPANY: str = 'TEST_COMPANY'
+    BLUECHIP_BANK: str = 'BLUECHIP_BANK'
+    TIPTOP_SOLUTIONS: str = 'TIPTOP_SOLUTIONS'
+    MONEY_MALL: str = 'MONEY_MALL'
 
 
 class PutCallFwd(str, Enum):
