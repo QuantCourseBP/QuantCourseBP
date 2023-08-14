@@ -1,18 +1,16 @@
 from __future__ import annotations
-from src.market_data import MarketData
-from src.enums import *
-from src.market_data import VolGrid
-import numpy as np
 from abc import ABC, abstractmethod
+from src.market_data import *
 from src.enums import *
+import numpy as np
 
 
 class MarketModel(ABC):
-    def __init__(self, und: Stock):
-        self._und = und
-        self._interest_rate = MarketData.get_risk_free_rate()
-        self._spot = MarketData.get_spot()[self._und]
-        self._volgrid = MarketData.get_vol_grid()[self._und]
+    def __init__(self, und: Stock) -> None:
+        self._und: Stock = und
+        self._interest_rate: float = MarketData.get_risk_free_rate()
+        self._spot: float = MarketData.get_spot()[self._und]
+        self._volgrid: VolGrid = MarketData.get_vol_grid()[self._und]
 
     def get_rate(self) -> float:
         return self._interest_rate
