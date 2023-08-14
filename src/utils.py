@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
-def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=False, view=(30.0, -60.0)) -> None:
+def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50)) -> None:
     fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
     points = volgrid.get_points().T
     strike_range = (min(points[0]), max(points[0]))
@@ -14,7 +14,7 @@ def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=False, view=(30.0,
     strike, expiry = np.meshgrid(strike, expiry)
     vols = volgrid.get_vol(np.array([strike, expiry]).reshape(2, num_steps**2).T)
     vols = vols.reshape(num_steps, num_steps)
-    ax.plot_surface(strike, expiry, vols, cmap=cm.coolwarm, linewidth=0, antialiased=False, alpha=0.5)
+    ax.plot_surface(strike, expiry, vols, cmap=cm.coolwarm, linewidth=0, antialiased=False, alpha=0.8)
     if show_obs:
         strike = points[0]
         expiry = points[1]
@@ -24,4 +24,5 @@ def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=False, view=(30.0,
     ax.set_ylabel('Expiry', fontweight='bold')
     ax.set_zlabel('Vol', fontweight='bold')
     ax.view_init(view[0], view[1])
+    plt.tight_layout()
     plt.show()

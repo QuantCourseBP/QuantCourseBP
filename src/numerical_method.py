@@ -2,11 +2,13 @@ from __future__ import annotations
 from abc import ABC
 from src.model import *
 import numpy as np
-from contract import Contract
+from src.contract import Contract
 
 
 class NumericalMethod(ABC):
-    def __init__(self, model: MarketModel, params: Params) -> None:
+    @abstractmethod
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams | PDEParams | TreeParams):
+        self._contract = contract
         self._model = model
         self._params = params
 
@@ -15,22 +17,21 @@ class NumericalMethod(ABC):
         return {cls.__name__: cls for cls in NumericalMethod.__subclasses__()}
 
 
-# todo: to be implemented
 class MCMethod(NumericalMethod):
-    def __init__(self, model: MarketModel, params: MCParams):
+    def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, MCParams):
-            raise TypeError('Params must be an instance of class MCParams')
-        super().__init__(model, params)
+            raise TypeError(f'Params must be of type MCParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
 
-    def find_simulation_tenors(self, contract_timeline: list[float]) -> list[float]:
-        final_tenor = max(contract_timeline)
+    def find_simulation_tenors(self) -> list[float]:
+        final_tenor = max(self._contract.get_timeline())
         dt = 1 / self._params.tenor_frequency
         num_of_tenors = int(final_tenor / dt)
         model_tenors = [i * dt for i in range(num_of_tenors)]
-        all_simul_tenors = sorted(model_tenors + contract_timeline)
+        all_simul_tenors = sorted(set(model_tenors + self._contract.get_timeline()))
         return all_simul_tenors
 
-    def generate_std_norm(self, num_of_tenors: int) -> np.array:
+    def generate_std_norm(self, num_of_tenors: int) -> np.ndarray:
         np.random.seed(self._params.seed)
         if self._params.antithetic:
             rnd1 = np.random.standard_normal(size=(int(self._params.num_of_paths / 2), num_of_tenors))
@@ -47,21 +48,21 @@ class MCMethod(NumericalMethod):
             rnd = (rnd - mean) / std
         return rnd
 
-    def simulate_spot_paths(self, contract: Contract):
+    def simulate_spot_paths(self) -> np.ndarray:
         model = self._model
-        contract_tenors = contract.get_timeline()
-        simulation_tenors = self.find_simulation_tenors(contract_tenors)
+        contract_tenors = self._contract.get_timeline()
+        simulation_tenors = self.find_simulation_tenors()
         num_of_tenors = len(simulation_tenors)
         num_of_paths = self._params.num_of_paths
         rnd_num = self.generate_std_norm(num_of_tenors)
         spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
-        initial_spot = model.get_initial_spot()
-        vol = model.get_vol(contract.get_strike(), contract.get_expiry())
+        spot = model.get_spot()
+        vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
         for path in range(num_of_paths):
             for t_idx in range(num_of_tenors):
                 t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
-                spot_from = initial_spot if t_idx == 0 else spot_paths[path, t_idx - 1]
+                spot_from = spot if t_idx == 0 else spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
                 spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
@@ -70,15 +71,17 @@ class MCMethod(NumericalMethod):
 
 # todo: to be implemented
 class PDEMethod(NumericalMethod):
-    def __init__(self, model: MarketModel, params: PDEParams):
+    def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, PDEParams):
-            raise TypeError('Params must be an instance of class PDEParams')
-        super().__init__(model, params)
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
 
 
 class SimpleBinomialTree(NumericalMethod):
-    def __init__(self, params: TreeParams, model: FlatVolModel):
-        super().__init__(model, params)
+    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+        if not isinstance(params, TreeParams):
+            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
         self._spot_tree_built = False
         self._df_computed = False
         self._prob_computed = False
@@ -94,22 +97,21 @@ class SimpleBinomialTree(NumericalMethod):
         self._down_log_step = np.log(self._params.down_step_mult)
         self._up_log_step = np.log(self._params.up_step_mult)
         tree = []
-        initial_log_spot = np.log(self._model.get_initial_spot())
-        previous_level = [initial_log_spot]
+        log_spot = np.log(self._model.get_spot())
+        previous_level = [log_spot]
         tree += [previous_level]
         for _ in range(self._params.nr_steps):
             new_level = [s + self._down_log_step for s in previous_level]
             new_level += [previous_level[-1] + self._up_log_step]
             tree += [new_level]
             previous_level = new_level
-
         self._spot_tree = tree
         self._spot_tree_built = True
 
     def compute_df(self):
         if self._df_computed:
             pass
-        delta_t = self._params.exp / self._params.nr_steps
+        delta_t = self._contract.get_expiry() / self._params.nr_steps
         df_1_step = self._model.get_df(delta_t)
         self._df = [df_1_step ** k for k in range(self._params.nr_steps + 1)]
         self._df_computed = True
@@ -126,19 +128,21 @@ class SimpleBinomialTree(NumericalMethod):
 
 
 class BalancedSimpleBinomialTree(SimpleBinomialTree):
-    def __init__(self, params: TreeParams, model: MarketModel):
+    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+        if not isinstance(params, TreeParams):
+            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         up = BalancedSimpleBinomialTree.calc_up_step_mult(
             model.get_rate(),
-            model.get_vol(params.strike, params.exp),
+            model.get_vol(contract.get_strike(), contract.get_expiry()),
             params.nr_steps,
-            params.exp)
+            contract.get_expiry())
         down = BalancedSimpleBinomialTree.calc_down_step_mult(
             model.get_rate(),
-            model.get_vol(params.strike, params.exp),
+            model.get_vol(contract.get_strike(), contract.get_expiry()),
             params.nr_steps,
-            params.exp)
-        p = TreeParams(params.exp, params.strike, params.nr_steps, up, down)
-        super().__init__(p, model)
+            contract.get_expiry())
+        p = TreeParams(params.nr_steps, up, down)
+        super().__init__(contract, model, p)
 
     @staticmethod
     def calc_up_step_mult(rate: float, vol: float, nr_steps: int, exp: float) -> float:
@@ -153,13 +157,8 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
         return np.exp(log_mean - vol * np.sqrt(delta_t))
 
 
-class AnalyticMethod(NumericalMethod):
-    def __init__(self, model: MarketModel):
-        super().__init__(model, Params())
-
-
 class Params(ABC):
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> dict[str, any]:
         return vars(self)
 
 
@@ -178,10 +177,7 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, exp: float, strike: float, nr_steps: int = 1, up_step_mult: float = np.nan,
-                 down_step_mult: float = np.nan) -> None:
-        self.exp = exp
+    def __init__(self, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
-        self.strike = strike
