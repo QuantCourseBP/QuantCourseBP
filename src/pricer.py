@@ -361,10 +361,47 @@ class GenericTreePricer(Pricer):
         return price_tree[0][0]
 
 
-# todo: to be implemented
-class GenericPDEPricer(Pricer):
+class EuropeanPDEPricer(Pricer):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+        if not isinstance(params, PDEParams):
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        self._derivative_type = contract.get_type()
+        self._bsPDE = BlackScholesPDE(contract, model, params)
+        self.grid = self._bsPDE.grid
+        self._initial_spot = model.get_spot()
+        self._strike = contract.get_strike()
+        self._interest_rate = model.get_rate()
+        self.t_step = params.time_step
+        self.und_step = params.und_step
+        self.stock_min = params.stock_min
+        self.stock_max = params.stock_max
+        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
+        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
+        self.method = params.method
+        self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
+
     def calc_fair_value(self) -> float:
-        raise NotImplementedError('Fair value is not implemented yet for GenericPDEPricer.')
+
+        if self.method.upper() == BSPDEMethod.EXPLICIT:
+            self._bsPDE.explicit_method()
+        elif self.method.upper() == BSPDEMethod.IMPLICIT:
+            self._bsPDE.implicit_method()
+        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
+            self._bsPDE.crank_nicolson_method()
+        else:
+            raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
+
+        # linear interpolation
+        down = int(np.floor((self._initial_spot - self.stock_min)/self.und_step))
+        up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
+
+        if down == up:
+            return self.grid[1, down+1]
+        else:
+            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
+                   (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
 
 
 class GenericMCPricer(Pricer):

@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 from src.model import *
 import numpy as np
-from src.contract import Contract
+from src.contract import Contract, EuropeanContract
 
 
 class NumericalMethod(ABC):
@@ -171,9 +171,13 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self) -> None:
+    def __init__(self, und_step: int, time_step: int, stock_min: int, stock_max: int, method: str) -> None:
         # todo: to be implemented
-        pass
+        self.und_step = und_step  # dS
+        self.time_step = time_step  # dt
+        self.stock_min = stock_min
+        self.stock_max = stock_max
+        self.method = method
 
 
 class TreeParams(Params):
@@ -181,3 +185,72 @@ class TreeParams(Params):
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
+
+
+class BlackScholesPDE(PDEMethod):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+        if not isinstance(params, PDEParams):
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        self.contract = contract
+        self.exp = contract.get_expiry()
+        self.strike = contract.get_strike()
+        self.sigma = model.get_vol(contract.get_strike(), contract.get_expiry())
+        self.time_step = params.time_step
+        self.und_step = params.und_step
+        self.derivative_type = contract.get_type()
+        self.stock_min = params.stock_min
+        self.stock_max = params.stock_max
+        self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
+        self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
+        self.interest_rate = model.get_rate()
+        self.grid = np.zeros((self.num_of_time_steps + 1, self.num_of_und_steps + 1))
+        self.matrix_first_entry, self.matrix_second_entry, self.matrix_third_entry = self.tridiagonal_matrix()
+
+    def setup_boundary_conditions(self):
+        if self.derivative_type == PutCallFwd.CALL:
+            self.grid[0, :] = np.maximum(np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1) - self.strike, 0)
+            self.grid[:, -1] = (self.stock_max - self.strike) * np.exp(
+                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+
+        elif self.derivative_type == PutCallFwd.PUT:
+            self.grid[0, :] = np.maximum(self.strike - np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1), 0)
+            self.grid[:, -1] = (self.strike - self.stock_max) * np.exp(
+                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+
+        else:
+            self.contract.raise_incorrect_derivative_type_error()
+
+    def explicit_method(self):
+        self.setup_boundary_conditions()
+        for j in range(1, self.num_of_time_steps + 1):
+            for i in range(1, self.num_of_und_steps):
+                alpha = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 - self.interest_rate * i)
+                beta = 1 - self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate)
+                gamma = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate * i)
+                self.grid[j, i] = alpha * self.grid[j - 1, i - 1] + beta * self.grid[j - 1, i] + gamma * self.grid[
+                    j - 1, i + 1]
+
+    def implicit_method(self):
+        self.setup_boundary_conditions()
+        for j in range(self.num_of_time_steps, 0, -1):
+            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_second_entry, self.grid[j, 1:self.num_of_und_steps]))
+
+    def crank_nicolson_method(self):
+        self.setup_boundary_conditions()
+        for j in range(self.num_of_time_steps, 0, -1):
+            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_third_entry, self.grid[j, 1:self.num_of_und_steps]))
+
+    def tridiagonal_matrix(self):
+        alpha = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 - self.interest_rate * np.arange(1, self.num_of_und_steps))
+        beta = 1 + self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate)
+        gamma = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate * np.arange(1, self.num_of_und_steps))
+
+        matrix_first_entry = np.diag(alpha[1:], -1) + np.diag(beta) + np.diag(gamma[:-1], 1)
+        matrix_second_entry = np.diag(-alpha[1:], -1) + np.diag(1 - beta) + np.diag(-gamma[:-1], 1)
+        matrix_third_entry = np.diag(alpha[1:], -1) + np.diag(1 - beta) + np.diag(gamma[:-1], 1)
+
+        return matrix_first_entry, matrix_second_entry, matrix_third_entry
+
