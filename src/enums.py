@@ -14,6 +14,20 @@ class PutCallFwd(str, Enum):
     FWD: str = 'FWD'
 
 
+class Measure(str, Enum):
+    FAIR_VALUE: str = 'FAIR_VALUE'
+    DELTA: str = 'DELTA'
+    GAMMA: str = 'GAMMA'
+    VEGA: str = 'VEGA'
+    THETA: str = 'THETA'
+    RHO: str = 'RHO'
+
+
+class GreekMethod(str, Enum):
+    ANALYTIC: str = 'ANALYTIC'
+    BUMP: str = 'BUMP'
+
+
 class LongShort(str, Enum):
     LONG: str = 'LONG'
     SHORT: str = 'SHORT'
@@ -29,15 +43,6 @@ class InOut(str, Enum):     # for Barrier Contract
     OUT: str = 'OUT'
 
 
-class Measure(str, Enum):
-    FAIR_VALUE: str = 'FAIR_VALUE'
-    DELTA: str = 'DELTA'
-    GAMMA: str = 'GAMMA'
-    VEGA: str = 'VEGA'
-    THETA: str = 'THETA'
-    RHO: str = 'RHO'
-
-
 class GreekMethod(str, Enum):
     ANALYTIC: str = 'ANALYTIC'
     BUMP: str = 'BUMP'
@@ -47,4 +52,5 @@ class BSPDEMethod(str, Enum):
     EXPLICIT: str = 'EXPLICIT'
     IMPLICIT: str = 'IMPLICIT'
     CRANKNICOLSON: str = 'CRANKNICOLSON'
+
 
