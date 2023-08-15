@@ -361,7 +361,7 @@ class GenericTreePricer(Pricer):
         return price_tree[0][0]
 
 
-class BlackScholesPDEPricer(Pricer):
+class EuropeanPDEPricer(Pricer):
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
         if not isinstance(contract, EuropeanContract):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
