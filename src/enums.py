@@ -43,4 +43,14 @@ class InOut(str, Enum):     # for Barrier Contract
     OUT: str = 'OUT'
 
 
+class GreekMethod(str, Enum):
+    ANALYTIC: str = 'ANALYTIC'
+    BUMP: str = 'BUMP'
+
+
+class BSPDEMethod(str, Enum):
+    EXPLICIT: str = 'EXPLICIT'
+    IMPLICIT: str = 'IMPLICIT'
+    CRANKNICOLSON: str = 'CRANKNICOLSON'
+
 
