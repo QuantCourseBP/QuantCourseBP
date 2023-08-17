@@ -66,7 +66,7 @@ class ForwardAnalyticPricer(Pricer):
             self._contract.raise_incorrect_derivative_type_error(self.__supported_deriv_type)
 
     def calc_delta(self) -> float:
-        return 1.0
+        return self._contract.get_direction() * 1.0
 
     def calc_gamma(self) -> float:
         return 0.0
