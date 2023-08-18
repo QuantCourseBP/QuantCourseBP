@@ -7,7 +7,7 @@ from src.enums import *
 
 
 class MarketData:
-    __MARKET_FOLDER: str = os.path.join(os.path.dirname(__file__), '..', 'mkt')
+    __MARKET_FOLDER: str = os.path.join(os.path.dirname(__file__), '..', '..', 'mkt')
     __FILENAME_SPOT: str = 'spot.csv'
     __FILENAME_VOL_GRID: str = 'vol_{und}.csv'
     __RISK_FREE_RATE: float = 0.05

@@ -15,7 +15,6 @@ class CalcEngine:
         MCMethod.__name__
     ]
 
-    # todo: params should be optional due to analytic method
     def __init__(self, contracts: list[Contract], model_name: str, method_name: str, params: Params) -> None:
         self.__contracts: list[Contract] = contracts
         self.__model_name: str = model_name
@@ -42,7 +41,7 @@ class CalcEngine:
     def __create_pricers(self) -> dict[Contract, Pricer]:
         pricers = dict()
         for contract in self.__contracts:
-            model = globals()[self.__model_name](contract.get_und())
+            model = globals()[self.__model_name](contract.get_underlying())
             if self.__numerical_method_name in self.__GENERIC_NUMERICAL_METHODS:
                 contract = contract.convert_to_generic()
             contract_name = contract.__class__.__name__.removesuffix('Contract')
