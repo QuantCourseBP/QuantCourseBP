@@ -2,6 +2,7 @@ import numpy as np
 from src.market_data import *
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from scipy.interpolate import Akima1DInterpolator
 
 
 def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50)) -> None:
@@ -24,5 +25,33 @@ def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50
     ax.set_ylabel('Expiry', fontweight='bold')
     ax.set_zlabel('Vol', fontweight='bold')
     ax.view_init(view[0], view[1])
-    plt.tight_layout()
+    fig.suptitle('Implied volatility surface', fontweight='bold')
+    fig.tight_layout()
+    plt.show()
+
+
+def plot_vol_slice(volgrid: VolGrid, expiry: float, linear_interpolation: bool = False):
+    fig, ax = plt.subplots()
+    points = volgrid.get_points().T
+    all_strike = points[0]
+    all_expiry = points[1]
+    all_vol = volgrid.get_values()
+    mask = np.isclose(all_expiry, expiry)
+    if all(~mask):
+        tenors = sorted(list(np.unique(all_expiry)))
+        raise ValueError(f'No data for requested tenor. Please choose from: {tenors}')
+    strike = all_strike[mask]
+    vol = all_vol[mask]
+    grid = np.linspace(min(strike), max(strike), 100)
+    if linear_interpolation:
+        interpolation = np.interp(grid, strike, vol)
+    else:
+        akima = Akima1DInterpolator(strike, vol)
+        interpolation = akima(grid)
+    ax.plot(strike, vol, 'o')
+    ax.plot(grid, interpolation, '#1f77b4')
+    ax.set_xlabel('Strike', fontweight='bold')
+    ax.set_ylabel('Vol', fontweight='bold')
+    fig.suptitle('Implied volatility', fontweight='bold')
+    ax.set_title(f'Expiry: {round(expiry, 2)} years')
     plt.show()

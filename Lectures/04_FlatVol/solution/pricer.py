@@ -1,12 +1,14 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import copy
-import numpy as np
 from scipy.stats import norm
 from src.enums import *
-from src.contract import *
-from src.model import *
-from src.numerical_method import *
+from contract import *
+from model import *
+
+
+class Params:
+    pass
 
 
 class Pricer(ABC):
@@ -17,11 +19,7 @@ class Pricer(ABC):
     def __init__(self, contract: Contract, model: MarketModel, params: Params):
         self._contract: Contract = contract
         self._model: MarketModel = model
-        self._params: Params | MCParams | PDEParams | TreeParams = params
-
-    @staticmethod
-    def get_pricers() -> dict[str, Pricer]:
-        return {cls.__name__: cls for cls in Pricer.__subclasses__()}
+        self._params: Params = params
 
     @abstractmethod
     def calc_fair_value(self) -> float:
@@ -328,96 +326,3 @@ class EuropeanAnalyticPricer(Pricer):
             return super().calc_rho(method)
         else:
             self._raise_unsupported_greek_method_error(method)
-
-
-class GenericTreePricer(Pricer):
-    def __init__(self, contract: EuropeanContract, model: MarketModel, params: TreeParams):
-        if not isinstance(contract, EuropeanContract):
-            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
-        if not isinstance(params, TreeParams):
-            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
-        super().__init__(contract, model, params)
-        if np.isnan(self._params.up_step_mult) or np.isnan(self._params.down_step_mult):
-            tree_method = BalancedSimpleBinomialTree(self._contract, self._model, self._params)
-        else:
-            tree_method = SimpleBinomialTree(self._contract, self._model, self._params)
-        self._tree_method = tree_method
-
-    def calc_fair_value(self) -> float:
-        self._tree_method.init_tree()
-        spot_tree = self._tree_method._spot_tree
-        price_tree = [[np.nan for _ in level] for level in spot_tree]
-        for i in range(len(spot_tree[-1])):
-            log_spot = spot_tree[-1][i]
-            spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
-            discounted_price = self._tree_method._df[-1] * self._contract.payoff(spot)
-            price_tree[-1][i] = discounted_price
-        for step in range(self._params.nr_steps - 1, -1, -1):
-            for i in range(len(spot_tree[step])):
-                # discounted price is martingale
-                discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + \
-                                   self._tree_method._prob[1] * price_tree[step + 1][i + 1]
-                price_tree[step][i] = discounted_price
-        return price_tree[0][0]
-
-
-class EuropeanPDEPricer(Pricer):
-    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
-        if not isinstance(contract, EuropeanContract):
-            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
-        if not isinstance(params, PDEParams):
-            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
-        self._derivative_type = contract.get_type()
-        self._bsPDE = BlackScholesPDE(contract, model, params)
-        self.grid = self._bsPDE.grid
-        self._initial_spot = model.get_spot()
-        self._strike = contract.get_strike()
-        self._interest_rate = model.get_rate()
-        self.t_step = params.time_step
-        self.und_step = params.und_step
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
-        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
-        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
-        self.method = params.method
-        self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
-
-    def calc_fair_value(self) -> float:
-
-        if self.method.upper() == BSPDEMethod.EXPLICIT:
-            self._bsPDE.explicit_method()
-        elif self.method.upper() == BSPDEMethod.IMPLICIT:
-            self._bsPDE.implicit_method()
-        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
-            self._bsPDE.crank_nicolson_method()
-        else:
-            raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
-
-        # linear interpolation
-        down = int(np.floor((self._initial_spot - self.stock_min)/self.und_step))
-        up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
-
-        if down == up:
-            return self.grid[0, down]
-        else:
-            return self.grid[0,  down] + (self.grid[0, up] - self.grid[0, down]) * \
-                   (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
-
-
-class GenericMCPricer(Pricer):
-    def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
-        super().__init__(contract, model, params)
-        self._mc_method = MCMethod(self._contract, self._model, self._params)
-
-    def calc_fair_value(self) -> float:
-        contract = self._contract
-        contractual_timeline = contract.get_timeline()
-        spot_paths = self._mc_method.simulate_spot_paths()
-        num_of_paths = self._params.num_of_paths
-        path_payoff = np.empty(num_of_paths)
-        for path in range(num_of_paths):
-            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
-            path_payoff[path] = contract.payoff(fixing_schedule)
-        maturity = contract.get_expiry()
-        fv = mean(path_payoff) * self._model.get_df(maturity)
-        return fv
