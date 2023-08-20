@@ -398,9 +398,9 @@ class EuropeanPDEPricer(Pricer):
         up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
 
         if down == up:
-            return self.grid[1, down+1]
+            return self.grid[0, down]
         else:
-            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
+            return self.grid[0,  down] + (self.grid[0, up] - self.grid[0, down]) * \
                    (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
 
 
