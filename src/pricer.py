@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import copy
+import math
 import numpy as np
 from scipy.stats import norm
 from src.enums import *
@@ -421,3 +422,57 @@ class GenericMCPricer(Pricer):
         maturity = contract.get_expiry()
         fv = mean(path_payoff) * self._model.get_df(maturity)
         return fv
+
+
+class AsianMomentmatchingPricer(Pricer):
+    def __init__(self, contract: AsianContract, model: MarketModel, params: AsianParams):
+        if not isinstance(contract, AsianContract):
+            raise TypeError(f'Contract must be of type AsianContract but received {type(contract).__name__}')
+        super().__init__(contract, model, params)
+
+    def calc_fair_value(self) -> float:
+        direction = self._contract.get_direction()
+        strike = self._contract.get_strike()
+        expiry = self._contract.get_expiry()
+        timeline = self._contract.get_timeline()
+        time_to_expiry = expiry - self._get_valuation_time()
+        spot = self._model.get_spot()
+        vol = self._model.get_vol(strike, expiry)
+        rate = self._model.get_rate()
+        df = self._model.get_df(time_to_expiry)
+
+        n = len(timeline)
+        moment_first = spot / n * sum([np.exp(rate*t_i) for t_i in timeline])
+        moment_second = spot**2/n**2 * sum(
+            [np.exp(rate*(t_i+t_j) + vol**2*min(t_i,t_j)) for t_i in timeline for t_j in timeline])
+        param1 = 2*np.log(moment_first) - np.log(moment_second)/2
+        param2 = math.sqrt(np.log(moment_second) - 2*np.log(moment_first))
+        d1 = (np.log(1/strike) + param1 + param2**2) / param2
+        d2 = d1 - param2
+        if self._contract.get_type() == PutCallFwd.CALL:
+            return direction * df * (np.exp(param1 + (param2**2)/2) * norm.cdf(d1) - strike * norm.cdf(d2))
+        elif self._contract.get_type() == PutCallFwd.PUT:
+            return direction * df * (strike * norm.cdf(-d2) - (np.exp(param1 + (param2**2)/2)) * norm.cdf(-d1))
+        else:
+            self._contract.raise_incorrect_derivative_type_error()
+
+
+underlying = Stock.BLUECHIP_BANK
+MarketData.initialize()
+volgrid = MarketData.get_vol_grid()[underlying]
+contract = AsianContract(underlying, PutCallFwd.PUT, LongShort.LONG, 100, 1, 100)
+model = FlatVolModel(underlying)
+params = Params()
+pricer_MM = AsianMomentmatchingPricer(contract, model, params)
+print(pricer_MM.calc_fair_value())
+
+# MCParams(Params):
+#     def __init__(self) -> None:
+#         # todo: to be implemented, a few examples:
+#         self.seed: int = 0
+#         self.num_of_paths: int = 100
+#         self.timestep: int = 10
+params_MC = MCParams()
+pricer_MC = GenericMCPricer(contract, model, params_MC)
+print(pricer_MC.calc_fair_value())
+
