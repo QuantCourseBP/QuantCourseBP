@@ -171,11 +171,12 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min: int = 0, stock_max: int = 200, method: str = 'explicit') -> None:
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: int = 0, stock_max_mult: int = 2,
+                 method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
-        self.stock_min = stock_min
-        self.stock_max = stock_max
+        self.stock_min_mult = stock_min_mult
+        self.stock_max_mult = stock_max_mult
         self.method = method
 
 
@@ -200,8 +201,8 @@ class BlackScholesPDE(PDEMethod):
         self.time_step = params.time_step
         self.und_step = params.und_step
         self.derivative_type = contract.get_type()
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
+        self.stock_min = params.stock_min_mult * model.get_spot()
+        self.stock_max = params.stock_max_mult * model.get_spot()
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
         self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
         self.interest_rate = model.get_rate()

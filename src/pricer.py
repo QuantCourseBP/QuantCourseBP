@@ -373,18 +373,18 @@ class EuropeanPDEPricer(Pricer):
         self._initial_spot = model.get_spot()
         self.und_step = params.und_step
         self.time_step = params.time_step
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
+        self.stock_min = self._bsPDE.stock_min
+        self.stock_max = self._bsPDE.stock_max
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
     def calc_fair_value(self) -> float:
 
-        if self.method.upper() == BSPDEMethod.EXPLICIT:
+        if self.method == BSPDEMethod.EXPLICIT:
             self._bsPDE.explicit_method()
-        elif self.method.upper() == BSPDEMethod.IMPLICIT:
+        elif self.method == BSPDEMethod.IMPLICIT:
             self._bsPDE.implicit_method()
-        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
+        elif self.method == BSPDEMethod.CRANKNICOLSON:
             self._bsPDE.crank_nicolson_method()
         else:
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
