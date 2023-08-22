@@ -371,14 +371,10 @@ class EuropeanPDEPricer(Pricer):
         self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
         self._initial_spot = model.get_spot()
-        self._strike = contract.get_strike()
-        self._interest_rate = model.get_rate()
-        self.t_step = params.time_step
         self.und_step = params.und_step
+        self.time_step = params.time_step
         self.stock_min = params.stock_min
         self.stock_max = params.stock_max
-        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
-        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 

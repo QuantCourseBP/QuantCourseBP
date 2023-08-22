@@ -271,7 +271,7 @@ class BlackScholesPDE(PDEMethod):
         rhs_vector = np.zeros(self.num_of_und_steps - 1)
         for j in range(self.num_of_time_steps-1, -1, -1):  # for t
             rhs_vector[0] = alpha[1] * (self.grid[j + 1, 0] + self.grid[j, 0])
-            rhs_vector[-1] = -gamma[-2] * (self.grid[j + 1, -1] + self.grid[j, -1])
+            rhs_vector[-1] = gamma[-2] * (self.grid[j + 1, -1] + self.grid[j, -1])
             self.grid[j, 1:-1] = np.linalg.solve(lower_matrix,
                                                  np.linalg.solve(upper_matrix,
                                                                  (rhs_matrix @ self.grid[j + 1, 1:-1]) + rhs_vector))
