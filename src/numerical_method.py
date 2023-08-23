@@ -18,16 +18,19 @@ class NumericalMethod(ABC):
 
 
 class MCMethod(NumericalMethod):
-    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         if not isinstance(params, MCParams):
             raise TypeError(f'Params must be of type MCParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
 
     def find_simulation_tenors(self) -> list[float]:
-        final_tenor = max(self._contract.get_timeline())
-        dt = 1 / self._params.tenor_frequency
-        num_of_tenors = int(final_tenor / dt)
-        model_tenors = [i * dt for i in range(num_of_tenors)]
+        if self._params.tenor_frequency == 0:
+            model_tenors = [.0]
+        else:
+            final_tenor = max(self._contract.get_timeline())
+            dt = 1 / self._params.tenor_frequency
+            num_of_tenors = int(final_tenor / dt)
+            model_tenors = [i * dt for i in range(num_of_tenors)]
         all_simul_tenors = sorted(set(model_tenors + self._contract.get_timeline()))
         return all_simul_tenors
 
@@ -38,15 +41,24 @@ class MCMethod(NumericalMethod):
             rnd2 = -rnd1
             rnd = np.concatenate((rnd1, rnd2), axis=0)
             if self._params.num_of_paths % 2 == 1:
-                zeros = np.zeros((1, self._params.num_of_tenors))
+                zeros = np.zeros((1, num_of_tenors))
                 rnd = np.concatenate((rnd, zeros), axis=0)
         else:
-            rnd = np.random.standard_normal(size=(self._params.num_of_paths, self._params.num_of_tenors))
+            rnd = np.random.standard_normal(size=(self._params.num_of_paths, num_of_tenors))
         if self._params.standardize:
             mean = np.mean(rnd)
             std = np.std(rnd)
             rnd = (rnd - mean) / std
         return rnd
+
+    @abstractmethod
+    def simulate_spot_paths(self) -> np.ndarray:
+        pass
+
+
+class MCMethodFlatVol(MCMethod):
+    def __int__(self, contract: Contract, model: FlatVolModel, params: MCParams):
+        super().__init__(contract, model, params)
 
     def simulate_spot_paths(self) -> np.ndarray:
         model = self._model
@@ -59,10 +71,11 @@ class MCMethod(NumericalMethod):
         spot = model.get_spot()
         vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
         for path in range(num_of_paths):
-            for t_idx in range(num_of_tenors):
+            spot_paths[path, 0] = spot
+            for t_idx in range(1, num_of_tenors):
                 t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
-                spot_from = spot if t_idx == 0 else spot_paths[path, t_idx - 1]
+                spot_from = spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
                 spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
@@ -163,11 +176,14 @@ class Params(ABC):
 
 
 class MCParams(Params):
-    def __init__(self) -> None:
-        # todo: to be implemented, a few examples:
-        self.seed: int = 0
-        self.num_of_paths: int = 100
-        self.timestep: int = 10
+    def __init__(self, seed: int = 1, num_of_path: int = 10000, tenor_frequency: int = 12,
+                 standardize: bool = True, antithetic: bool = True, control_variate: bool = False) -> None:
+        self.seed = seed
+        self.num_of_paths = num_of_path
+        self.tenor_frequency = tenor_frequency
+        self.standardize = standardize
+        self.antithetic = antithetic
+        self.control_variate = control_variate
 
 
 class PDEParams(Params):
