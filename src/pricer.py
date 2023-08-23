@@ -371,24 +371,20 @@ class EuropeanPDEPricer(Pricer):
         self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
         self._initial_spot = model.get_spot()
-        self._strike = contract.get_strike()
-        self._interest_rate = model.get_rate()
-        self.t_step = params.time_step
         self.und_step = params.und_step
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
-        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
-        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
+        self.time_step = params.time_step
+        self.stock_min = self._bsPDE.stock_min
+        self.stock_max = self._bsPDE.stock_max
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
     def calc_fair_value(self) -> float:
 
-        if self.method.upper() == BSPDEMethod.EXPLICIT:
+        if self.method == BSPDEMethod.EXPLICIT:
             self._bsPDE.explicit_method()
-        elif self.method.upper() == BSPDEMethod.IMPLICIT:
+        elif self.method == BSPDEMethod.IMPLICIT:
             self._bsPDE.implicit_method()
-        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
+        elif self.method == BSPDEMethod.CRANKNICOLSON:
             self._bsPDE.crank_nicolson_method()
         else:
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
@@ -398,9 +394,9 @@ class EuropeanPDEPricer(Pricer):
         up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
 
         if down == up:
-            return self.grid[1, down+1]
+            return self.grid[0, down]
         else:
-            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
+            return self.grid[0,  down] + (self.grid[0, up] - self.grid[0, down]) * \
                    (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
 
 
