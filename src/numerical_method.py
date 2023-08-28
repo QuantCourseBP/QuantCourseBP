@@ -69,7 +69,6 @@ class MCMethod(NumericalMethod):
         return spot_paths[:, contract_tenor_idx]
 
 
-# todo: to be implemented
 class PDEMethod(NumericalMethod):
     def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, PDEParams):
@@ -171,7 +170,7 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: int = 0, stock_max_mult: int = 2,
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: float = 0, stock_max_mult: float = 2,
                  method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
@@ -206,7 +205,7 @@ class BlackScholesPDE(PDEMethod):
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
         self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
         self.interest_rate = model.get_rate()
-        self.grid = np.zeros((self.num_of_time_steps + 1, self.num_of_und_steps + 1))
+        self.grid = np.zeros((self.num_of_und_steps + 1, self.num_of_time_steps + 1))
         self.stock_disc = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
         self.time_disc = np.linspace(0, self.exp, self.num_of_time_steps + 1)
         self.measure_of_stock = self.stock_disc / self.und_step
@@ -214,16 +213,16 @@ class BlackScholesPDE(PDEMethod):
 
     def setup_boundary_conditions(self):
         if self.derivative_type == PutCallFwd.CALL:
-            # initial condition
-            self.grid[-1, :] = np.maximum(self.stock_disc - self.strike, 0)
+            # terminal condition
+            self.grid[:, -1] = np.maximum(self.stock_disc - self.strike, 0)
             # right boundary
-            self.grid[:, -1] = self.stock_max - self.strike * self.df
+            self.grid[-1, :] = self.stock_max - self.strike * self.df
 
         elif self.derivative_type == PutCallFwd.PUT:
-            # initial condition
-            self.grid[-1, :] = np.maximum(self.strike - self.stock_disc, 0)
+            # terminal condition
+            self.grid[:, -1] = np.maximum(self.strike - self.stock_disc, 0)
             # left condition
-            self.grid[:, 0] = self.strike * self.df - self.stock_min
+            self.grid[0, :] = self.strike * self.df - self.stock_min
 
         else:
             self.contract.raise_incorrect_derivative_type_error()
@@ -237,8 +236,8 @@ class BlackScholesPDE(PDEMethod):
                                         self.measure_of_stock)
         for j in range(self.num_of_time_steps-1, -1, -1):  # for t
             for i in range(1, self.num_of_und_steps):  # for S
-                self.grid[j, i] = alpha[i] * self.grid[j + 1, i - 1] + beta[i] * self.grid[j + 1, i] + gamma[i] \
-                                              * self.grid[j + 1, i + 1]
+                self.grid[i, j] = alpha[i] * self.grid[i - 1, j + 1] + beta[i] * self.grid[i, j + 1] + gamma[i] \
+                                              * self.grid[i + 1, j + 1]
 
     def implicit_method(self):
         self.setup_boundary_conditions()
@@ -252,9 +251,9 @@ class BlackScholesPDE(PDEMethod):
 
         rhs_vector = np.zeros(self.num_of_und_steps-1)
         for j in range(self.num_of_time_steps-1, -1, -1):  # for t
-            rhs_vector[0] = -alpha[1] * self.grid[j+1, 0]
-            rhs_vector[-1] = -gamma[-2] * self.grid[j+1, -1]
-            self.grid[j, 1:-1] = np.linalg.solve(lower_matrix, np.linalg.solve(upper_matrix, self.grid[j + 1, 1:-1]
+            rhs_vector[0] = -alpha[1] * self.grid[0, j+1]
+            rhs_vector[-1] = -gamma[-2] * self.grid[-1, j+1]
+            self.grid[1:-1, j] = np.linalg.solve(lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1]
                                                                                + rhs_vector))
 
     def crank_nicolson_method(self):
@@ -271,11 +270,11 @@ class BlackScholesPDE(PDEMethod):
 
         rhs_vector = np.zeros(self.num_of_und_steps - 1)
         for j in range(self.num_of_time_steps-1, -1, -1):  # for t
-            rhs_vector[0] = alpha[1] * (self.grid[j + 1, 0] + self.grid[j, 0])
-            rhs_vector[-1] = gamma[-2] * (self.grid[j + 1, -1] + self.grid[j, -1])
-            self.grid[j, 1:-1] = np.linalg.solve(lower_matrix,
+            rhs_vector[0] = alpha[1] * (self.grid[0, j + 1] + self.grid[0, j])
+            rhs_vector[-1] = gamma[-2] * (self.grid[-1, j + 1] + self.grid[-1, j])
+            self.grid[1:-1, j] = np.linalg.solve(lower_matrix,
                                                  np.linalg.solve(upper_matrix,
-                                                                 (rhs_matrix @ self.grid[j + 1, 1:-1]) + rhs_vector))
+                                                                 (rhs_matrix @ self.grid[1:-1, j + 1]) + rhs_vector))
 
 
 
