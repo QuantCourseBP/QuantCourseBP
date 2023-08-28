@@ -337,7 +337,7 @@ class EuropeanAnalyticPricer(Pricer):
             self.raise_unsupported_greek_method_error(method)
 
 
-class GenericTreePricer(Pricer):
+class EuropeanTreePricer(Pricer):
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: TreeParams):
         if not isinstance(contract, EuropeanContract):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
@@ -366,6 +366,39 @@ class GenericTreePricer(Pricer):
                                    self.tree_method.prob[1] * price_tree[step + 1][i + 1]
                 price_tree[step][i] = discounted_price
         return price_tree[0][0]
+
+class AmericanTreePricer(Pricer):
+    def __init__(self, contract: AmericanContract, model: MarketModel, params: TreeParams):
+        if not isinstance(contract, AmericanContract):
+            raise TypeError(f'Contract must be of type AmericanContract but received {type(contract).__name__}')
+        if not isinstance(params, TreeParams):
+            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        if np.isnan(self._params.up_step_mult) or np.isnan(self._params.down_step_mult):
+            tree_method = BalancedSimpleBinomialTree(self._contract, self._model, self._params)
+        else:
+            tree_method = SimpleBinomialTree(self._contract, self._model, self._params)
+        self._tree_method = tree_method
+
+    def calc_fair_value(self) -> float:
+        self._tree_method.init_tree()
+        spot_tree = self._tree_method._spot_tree
+        continuation_value_tree = [[np.nan for _ in level] for level in spot_tree]
+        for i in range(len(spot_tree[-1])):
+            log_spot = spot_tree[-1][i]
+            spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
+            discounted_continuation_value = self._tree_method._df[-1] * self._contract.payoff(spot)
+            continuation_value_tree[-1][i] = discounted_continuation_value
+        for step in range(self._params.nr_steps - 1, -1, -1):
+            for i in range(len(spot_tree[step])):
+                log_spot = spot_tree[step][i]
+                spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
+                intrinsic_value = self._tree_method._df[step] * self._contract.payoff(spot)
+                discounted_continuation_value = self._tree_method._prob[0] * continuation_value_tree[step + 1][i] + \
+                                   self._tree_method._prob[1] * continuation_value_tree[step + 1][i + 1]
+                continuation_value_tree[step][i] = max(discounted_continuation_value,intrinsic_value) \
+                    if self._contract.get_long_short() == LongShort.LONG else min(discounted_continuation_value,intrinsic_value)
+        return continuation_value_tree[0][0]
 
 
 class GenericPDEPricer(Pricer):

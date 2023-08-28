@@ -100,13 +100,30 @@ class TestTreePricer:
     model = FlatVolModel(und)
     expiry = 1.0
     strike = 1.0 * MarketData.get_spot()[und]
-    contract = EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry)
-    params = [TreeParams(2, 1.2, 0.8), TreeParams(2)]
-    pvs = [7.982310163583209, 12.967550694010356]
 
-    @pytest.mark.parametrize('param, expected_pv', zip(params, pvs))
-    def test_tree_pricer(self, param, expected_pv):
-        pricer = GenericTreePricer(self.contract, self.model, param)
+    europeanParams = [TreeParams(2, 1.2, 0.8), TreeParams(2), TreeParams(2), TreeParams(10), TreeParams(10)]
+    pvs_european = [7.982310163583209, 12.967550694010356, 8.157177, 13.989518, 9.125927]
+    europeanContracts = [EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry),
+                 EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry),
+                 EuropeanContract(und, PutCallFwd.PUT, LongShort.LONG, strike, expiry),
+                 EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry),
+                 EuropeanContract(und, PutCallFwd.PUT, LongShort.LONG, strike, expiry)]
+
+    @pytest.mark.parametrize('param, contract, expected_pv', zip(europeanParams, europeanContracts, pvs_european))
+    def test_european_tree_pricer(self, param, contract, expected_pv):
+        pricer = EuropeanTreePricer(contract, self.model, param)
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(expected_pv)
+
+    americanParams = [TreeParams(10), TreeParams(10), TreeParams(10), TreeParams(100)]
+    pvs_american = [13.989518, -13.989518, 9.730767, 14.218382]
+    americanContracts = [AmericanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry),
+                 AmericanContract(und, PutCallFwd.CALL, LongShort.SHORT, strike, expiry),
+                 AmericanContract(und, PutCallFwd.PUT, LongShort.LONG, strike, expiry),
+                 AmericanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry)]
+    @pytest.mark.parametrize('param, contract, expected_pv', zip(americanParams, americanContracts, pvs_american))
+    def test_american_tree_pricer(self, param, contract, expected_pv):
+        pricer = AmericanTreePricer(contract, self.model, param)
         pv = pricer.calc_fair_value()
         assert pv == pytest.approx(expected_pv)
 
