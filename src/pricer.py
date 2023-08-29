@@ -107,6 +107,10 @@ class Pricer(ABC):
         raise ValueError(f'Unsupported GreekMethod {method} for Pricer {type(self).__name__}. '
                          f'Supported methods are: {", ".join(supported)}')
 
+    @property
+    def params(self):
+        return self._params
+
 
 class ForwardAnalyticPricer(Pricer):
     __supported_deriv_type: tuple[PutCallFwd, ...] = (PutCallFwd.FWD,)
@@ -376,20 +380,19 @@ class EuropeanPDEPricer(Pricer):
         self._interest_rate = model.get_rate()
         self.t_step = params.time_step
         self.und_step = params.und_step
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
-        self.ns_steps = self._bsPDE.num_of_und_steps  # Number of stock price steps
-        self.nt_steps = self._bsPDE.num_of_time_steps  # Number of time steps
+        self.time_step = params.time_step
+        self.stock_min = self._bsPDE.stock_min
+        self.stock_max = self._bsPDE.stock_max
         self.method = params.method
         self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
     def calc_fair_value(self) -> float:
 
-        if self.method.upper() == BSPDEMethod.EXPLICIT:
+        if self.method == BSPDEMethod.EXPLICIT:
             self._bsPDE.explicit_method()
-        elif self.method.upper() == BSPDEMethod.IMPLICIT:
+        elif self.method == BSPDEMethod.IMPLICIT:
             self._bsPDE.implicit_method()
-        elif self.method.upper() == BSPDEMethod.CRANKNICOLSON:
+        elif self.method == BSPDEMethod.CRANKNICOLSON:
             self._bsPDE.crank_nicolson_method()
         else:
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
@@ -399,16 +402,19 @@ class EuropeanPDEPricer(Pricer):
         up = int(np.ceil((self._initial_spot - self.stock_min)/self.und_step))
 
         if down == up:
-            return self.grid[1, down+1]
+            return self.grid[0, down]
         else:
-            return self.grid[1,  down+1] + (self.grid[1, up+1] - self.grid[1, down+1]) * \
+            return self.grid[0,  down] + (self.grid[0, up] - self.grid[0, down]) * \
                    (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
 
 
 class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         super().__init__(contract, model, params)
-        self._mc_method = MCMethod(self._contract, self._model, self._params)
+        if isinstance(model, FlatVolModel):
+            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
+        else:
+            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
 
     def calc_fair_value(self) -> float:
         contract = self._contract
@@ -420,9 +426,35 @@ class GenericMCPricer(Pricer):
             fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.get_expiry()
+        if self.params.control_variate:
+            # adjust path_payoff inplace
+            self.apply_control_var_adj(path_payoff, spot_paths)
         fv = mean(path_payoff) * self._model.get_df(maturity)
         return fv
 
+    def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
+        pricer_cv = self.get_controlvar_helper_pricer(self._contract)
+        contract_cv = pricer_cv._contract
+        num_of_path = len(path_payoff)
+        path_payoff_cv = np.empty(num_of_path)
+        for path in range(num_of_path):
+            # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
+            fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
+            path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
+        cov = np.cov(path_payoff, path_payoff_cv)
+        b = cov[0][1]/cov[1][1]
+        contract_cv_mean = pricer_cv.calc_fair_value() / self._model.get_df(contract_cv.get_expiry())
+        for i in range(num_of_path):
+            path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
+
+    def get_controlvar_helper_pricer(self, contract: Contract) -> Pricer:
+        if isinstance(contract, EuropeanContract):
+            und = contract.get_underlying()
+            exp = contract.get_expiry()
+            contract_cv = ForwardContract(und, LongShort.LONG, 1., exp)
+            return ForwardAnalyticPricer(contract_cv, self._model, Params())
+        else:
+            raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
 
 class AsianMomentmatchingPricer(Pricer):
     def __init__(self, contract: AsianContract, model: MarketModel, params: AsianParams):

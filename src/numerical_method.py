@@ -3,7 +3,7 @@ from abc import ABC
 from src.model import *
 import numpy as np
 from src.contract import Contract, EuropeanContract
-
+import scipy
 
 class NumericalMethod(ABC):
     @abstractmethod
@@ -18,16 +18,19 @@ class NumericalMethod(ABC):
 
 
 class MCMethod(NumericalMethod):
-    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         if not isinstance(params, MCParams):
             raise TypeError(f'Params must be of type MCParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
 
     def find_simulation_tenors(self) -> list[float]:
-        final_tenor = max(self._contract.get_timeline())
-        dt = 1 / self._params.tenor_frequency
-        num_of_tenors = int(final_tenor / dt)
-        model_tenors = [i * dt for i in range(num_of_tenors)]
+        if self._params.tenor_frequency == 0:
+            model_tenors = [.0]
+        else:
+            final_tenor = max(self._contract.get_timeline())
+            dt = 1 / self._params.tenor_frequency
+            num_of_tenors = int(final_tenor / dt)
+            model_tenors = [i * dt for i in range(num_of_tenors)]
         all_simul_tenors = sorted(set(model_tenors + self._contract.get_timeline()))
         return all_simul_tenors
 
@@ -38,15 +41,24 @@ class MCMethod(NumericalMethod):
             rnd2 = -rnd1
             rnd = np.concatenate((rnd1, rnd2), axis=0)
             if self._params.num_of_paths % 2 == 1:
-                zeros = np.zeros((1, self._params.num_of_tenors))
+                zeros = np.zeros((1, num_of_tenors))
                 rnd = np.concatenate((rnd, zeros), axis=0)
         else:
-            rnd = np.random.standard_normal(size=(self._params.num_of_paths, self._params.num_of_tenors))
+            rnd = np.random.standard_normal(size=(self._params.num_of_paths, num_of_tenors))
         if self._params.standardize:
             mean = np.mean(rnd)
             std = np.std(rnd)
             rnd = (rnd - mean) / std
         return rnd
+
+    @abstractmethod
+    def simulate_spot_paths(self) -> np.ndarray:
+        pass
+
+
+class MCMethodFlatVol(MCMethod):
+    def __int__(self, contract: Contract, model: FlatVolModel, params: MCParams):
+        super().__init__(contract, model, params)
 
     def simulate_spot_paths(self) -> np.ndarray:
         model = self._model
@@ -59,10 +71,11 @@ class MCMethod(NumericalMethod):
         spot = model.get_spot()
         vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
         for path in range(num_of_paths):
-            for t_idx in range(num_of_tenors):
+            spot_paths[path, 0] = spot
+            for t_idx in range(1, num_of_tenors):
                 t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
-                spot_from = spot if t_idx == 0 else spot_paths[path, t_idx - 1]
+                spot_from = spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
                 spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
@@ -163,20 +176,23 @@ class Params(ABC):
 
 
 class MCParams(Params):
-    def __init__(self) -> None:
-        # todo: to be implemented, a few examples:
-        self.seed: int = 0
-        self.num_of_paths: int = 100
-        self.timestep: int = 10
+    def __init__(self, seed: int = 1, num_of_path: int = 10000, tenor_frequency: int = 12,
+                 standardize: bool = True, antithetic: bool = True, control_variate: bool = False) -> None:
+        self.seed = seed
+        self.num_of_paths = num_of_path
+        self.tenor_frequency = tenor_frequency
+        self.standardize = standardize
+        self.antithetic = antithetic
+        self.control_variate = control_variate
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int, time_step: int, stock_min: int, stock_max: int, method: str) -> None:
-        # todo: to be implemented
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: int = 0, stock_max_mult: int = 2,
+                 method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
-        self.stock_min = stock_min
-        self.stock_max = stock_max
+        self.stock_min_mult = stock_min_mult
+        self.stock_max_mult = stock_max_mult
         self.method = method
 
 
@@ -201,56 +217,81 @@ class BlackScholesPDE(PDEMethod):
         self.time_step = params.time_step
         self.und_step = params.und_step
         self.derivative_type = contract.get_type()
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
+        self.stock_min = params.stock_min_mult * model.get_spot()
+        self.stock_max = params.stock_max_mult * model.get_spot()
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
         self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
         self.interest_rate = model.get_rate()
         self.grid = np.zeros((self.num_of_time_steps + 1, self.num_of_und_steps + 1))
-        self.matrix_first_entry, self.matrix_second_entry, self.matrix_third_entry = self.tridiagonal_matrix()
+        self.stock_disc = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
+        self.time_disc = np.linspace(0, self.exp, self.num_of_time_steps + 1)
+        self.measure_of_stock = self.stock_disc / self.und_step
+        self.df = model.get_df(self.exp - self.time_disc)
 
     def setup_boundary_conditions(self):
         if self.derivative_type == PutCallFwd.CALL:
-            self.grid[0, :] = np.maximum(np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1) - self.strike, 0)
-            self.grid[:, -1] = (self.stock_max - self.strike) * np.exp(
-                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+            # initial condition
+            self.grid[-1, :] = np.maximum(self.stock_disc - self.strike, 0)
+            # right boundary
+            self.grid[:, -1] = self.stock_max - self.strike * self.df
 
         elif self.derivative_type == PutCallFwd.PUT:
-            self.grid[0, :] = np.maximum(self.strike - np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1), 0)
-            self.grid[:, -1] = (self.strike - self.stock_max) * np.exp(
-                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
+            # initial condition
+            self.grid[-1, :] = np.maximum(self.strike - self.stock_disc, 0)
+            # left condition
+            self.grid[:, 0] = self.strike * self.df - self.stock_min
 
         else:
             self.contract.raise_incorrect_derivative_type_error()
 
     def explicit_method(self):
         self.setup_boundary_conditions()
-        for j in range(1, self.num_of_time_steps + 1):
-            for i in range(1, self.num_of_und_steps):
-                alpha = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 - self.interest_rate * i)
-                beta = 1 - self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate)
-                gamma = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate * i)
-                self.grid[j, i] = alpha * self.grid[j - 1, i - 1] + beta * self.grid[j - 1, i] + gamma * self.grid[
-                    j - 1, i + 1]
+        alpha = 0.5 * self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 - self.interest_rate *
+                                        self.measure_of_stock)
+        beta = 1 - self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 + self.interest_rate)
+        gamma = 0.5 * self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 + self.interest_rate *
+                                        self.measure_of_stock)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            for i in range(1, self.num_of_und_steps):  # for S
+                self.grid[j, i] = alpha[i] * self.grid[j + 1, i - 1] + beta[i] * self.grid[j + 1, i] + gamma[i] \
+                                              * self.grid[j + 1, i + 1]
 
     def implicit_method(self):
         self.setup_boundary_conditions()
-        for j in range(self.num_of_time_steps, 0, -1):
-            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_second_entry, self.grid[j, 1:self.num_of_und_steps]))
+        alpha = 0.5 * self.time_step * (self.interest_rate * self.measure_of_stock - self.sigma ** 2 *
+                                        self.measure_of_stock ** 2)
+        beta = 1 + self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 + self.interest_rate)
+        gamma = - 0.5 * self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 +
+                                          self.interest_rate * self.measure_of_stock)
+        upper_matrix = np.diag(alpha[2:-1], -1) + np.diag(beta[1:-1]) + np.diag(gamma[1:-2], 1)
+        lower_matrix = np.eye(self.num_of_und_steps - 1)
+
+        rhs_vector = np.zeros(self.num_of_und_steps-1)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            rhs_vector[0] = -alpha[1] * self.grid[j+1, 0]
+            rhs_vector[-1] = -gamma[-2] * self.grid[j+1, -1]
+            self.grid[j, 1:-1] = np.linalg.solve(lower_matrix, np.linalg.solve(upper_matrix, self.grid[j + 1, 1:-1]
+                                                                               + rhs_vector))
 
     def crank_nicolson_method(self):
         self.setup_boundary_conditions()
-        for j in range(self.num_of_time_steps, 0, -1):
-            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_third_entry, self.grid[j, 1:self.num_of_und_steps]))
 
-    def tridiagonal_matrix(self):
-        alpha = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 - self.interest_rate * np.arange(1, self.num_of_und_steps))
-        beta = 1 + self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate)
-        gamma = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate * np.arange(1, self.num_of_und_steps))
+        alpha = 0.25 * self.time_step * (-self.interest_rate * self.measure_of_stock + self.sigma ** 2 *
+                                         self.measure_of_stock ** 2)
+        beta = -0.5 * self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 + self.interest_rate)
+        gamma = 0.25 * self.time_step * (self.sigma ** 2 * self.measure_of_stock ** 2 +
+                                         self.interest_rate * self.measure_of_stock)
+        upper_matrix = - np.diag(alpha[2:-1], -1) + np.diag(1-beta[1:-1]) - np.diag(gamma[1:-2], 1)
+        lower_matrix = np.eye(self.num_of_und_steps - 1)
+        rhs_matrix = np.diag(alpha[2:-1], -1) + np.diag(1+beta[1:-1]) + np.diag(gamma[1:-2], 1)
 
-        matrix_first_entry = np.diag(alpha[1:], -1) + np.diag(beta) + np.diag(gamma[:-1], 1)
-        matrix_second_entry = np.diag(-alpha[1:], -1) + np.diag(1 - beta) + np.diag(-gamma[:-1], 1)
-        matrix_third_entry = np.diag(alpha[1:], -1) + np.diag(1 - beta) + np.diag(gamma[:-1], 1)
+        rhs_vector = np.zeros(self.num_of_und_steps - 1)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            rhs_vector[0] = alpha[1] * (self.grid[j + 1, 0] + self.grid[j, 0])
+            rhs_vector[-1] = gamma[-2] * (self.grid[j + 1, -1] + self.grid[j, -1])
+            self.grid[j, 1:-1] = np.linalg.solve(lower_matrix,
+                                                 np.linalg.solve(upper_matrix,
+                                                                 (rhs_matrix @ self.grid[j + 1, 1:-1]) + rhs_vector))
 
-        return matrix_first_entry, matrix_second_entry, matrix_third_entry
+
 
