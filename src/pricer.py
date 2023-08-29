@@ -106,6 +106,10 @@ class Pricer(ABC):
         raise ValueError(f'Unsupported GreekMethod {method} for Pricer {type(self).__name__}. '
                          f'Supported methods are: {", ".join(supported)}')
 
+    @property
+    def params(self):
+        return self._params
+
 
 class ForwardAnalyticPricer(Pricer):
     __supported_deriv_type: tuple[PutCallFwd, ...] = (PutCallFwd.FWD,)
@@ -403,7 +407,10 @@ class EuropeanPDEPricer(Pricer):
 class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         super().__init__(contract, model, params)
-        self._mc_method = MCMethod(self._contract, self._model, self._params)
+        if isinstance(model, FlatVolModel):
+            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
+        else:
+            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
 
     def calc_fair_value(self) -> float:
         contract = self._contract
@@ -415,5 +422,32 @@ class GenericMCPricer(Pricer):
             fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.get_expiry()
+        if self.params.control_variate:
+            # adjust path_payoff inplace
+            self.apply_control_var_adj(path_payoff, spot_paths)
         fv = mean(path_payoff) * self._model.get_df(maturity)
         return fv
+
+    def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
+        pricer_cv = self.get_controlvar_helper_pricer(self._contract)
+        contract_cv = pricer_cv._contract
+        num_of_path = len(path_payoff)
+        path_payoff_cv = np.empty(num_of_path)
+        for path in range(num_of_path):
+            # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
+            fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
+            path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
+        cov = np.cov(path_payoff, path_payoff_cv)
+        b = cov[0][1]/cov[1][1]
+        contract_cv_mean = pricer_cv.calc_fair_value() / self._model.get_df(contract_cv.get_expiry())
+        for i in range(num_of_path):
+            path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
+
+    def get_controlvar_helper_pricer(self, contract: Contract) -> Pricer:
+        if isinstance(contract, EuropeanContract):
+            und = contract.get_underlying()
+            exp = contract.get_expiry()
+            contract_cv = ForwardContract(und, LongShort.LONG, 1., exp)
+            return ForwardAnalyticPricer(contract_cv, self._model, Params())
+        else:
+            raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
