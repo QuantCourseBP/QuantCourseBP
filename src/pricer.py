@@ -417,37 +417,70 @@ class GenericMCPricer(Pricer):
             raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
 
     def calc_fair_value(self) -> float:
-        contract = self._contract
-        contractual_timeline = contract.get_timeline()
-        spot_paths = self._mc_method.simulate_spot_paths()
-        num_of_paths = self._params.num_of_paths
-        path_payoff = np.empty(num_of_paths)
-        for path in range(num_of_paths):
-            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
-            path_payoff[path] = contract.payoff(fixing_schedule)
-        maturity = contract.get_expiry()
-        if self.params.control_variate:
-            # adjust path_payoff inplace
-            self.apply_control_var_adj(path_payoff, spot_paths)
-        fv = mean(path_payoff) * self._model.get_df(maturity)
-        return fv
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # contract = self._contract
+        # contractual_timeline = contract.get_timeline()
+        # spot_paths = self._mc_method.simulate_spot_paths()
+        # num_of_paths = self._params.num_of_paths
+        # path_payoff = np.empty(num_of_paths)
+        # for path in range(num_of_paths):
+        #     fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
+        #     path_payoff[path] = contract.payoff(fixing_schedule)
+        # maturity = contract.get_expiry()
+        # if self.params.control_variate:
+        #     # adjust path_payoff inplace
+        #     self.apply_control_var_adj(path_payoff, spot_paths)
+        # fv = mean(path_payoff) * self._model.get_df(maturity)
+        # return fv
 
     def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
-        pricer_cv = self.get_controlvar_helper_pricer(self._contract)
-        contract_cv = pricer_cv._contract
-        num_of_path = len(path_payoff)
-        path_payoff_cv = np.empty(num_of_path)
-        for path in range(num_of_path):
-            # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
-            fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
-            path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
-        cov = np.cov(path_payoff, path_payoff_cv)
-        b = cov[0][1]/cov[1][1]
-        contract_cv_mean = pricer_cv.calc_fair_value() / self._model.get_df(contract_cv.get_expiry())
-        for i in range(num_of_path):
-            path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
 
-    def get_controlvar_helper_pricer(self, contract: Contract) -> Pricer:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # pricer_cv = self.get_controlvar_helper_pricer()
+        # contract_cv = pricer_cv._contract
+        # num_of_path = len(path_payoff)
+        # path_payoff_cv = np.empty(num_of_path)
+        # for path in range(num_of_path):
+        #     # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
+        #     fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
+        #     path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
+        # cov = np.cov(path_payoff, path_payoff_cv)
+        # b = cov[0][1]/cov[1][1]
+        # contract_cv_mean = pricer_cv.calc_fair_value() / self._model.get_df(contract_cv.get_expiry())
+        # for i in range(num_of_path):
+        #     path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
+
+    def get_controlvar_helper_pricer(self) -> Pricer:
+        contract = self._contract
         if isinstance(contract, EuropeanContract):
             und = contract.get_underlying()
             exp = contract.get_expiry()

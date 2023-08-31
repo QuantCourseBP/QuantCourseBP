@@ -51,8 +51,46 @@ class MCMethod(NumericalMethod):
             rnd = (rnd - mean) / std
         return rnd
 
-    @abstractmethod
     def simulate_spot_paths(self) -> np.ndarray:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # contract_tenors = self._contract.get_timeline()
+        # simulation_tenors = self.find_simulation_tenors()
+        # num_of_tenors = len(simulation_tenors)
+        # num_of_paths = self._params.num_of_paths
+        # rnd_num = self.generate_std_norm(num_of_tenors)
+        # spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
+        # spot = self._model.get_spot()
+        #
+        # for path in range(num_of_paths):
+        #     spot_paths[path, 0] = spot
+        #     for t_idx in range(1, num_of_tenors):
+        #         t_from = simulation_tenors[t_idx - 1]
+        #         t_to = simulation_tenors[t_idx]
+        #         spot_from = spot_paths[path, t_idx - 1]
+        #         z = rnd_num[path, t_idx]
+        #         spot_paths[path, t_idx] = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
+        # contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
+        # return spot_paths[:, contract_tenor_idx]
+
+    @abstractmethod
+    def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
         pass
 
 
@@ -60,26 +98,24 @@ class MCMethodFlatVol(MCMethod):
     def __int__(self, contract: Contract, model: FlatVolModel, params: MCParams):
         super().__init__(contract, model, params)
 
-    def simulate_spot_paths(self) -> np.ndarray:
-        model = self._model
-        contract_tenors = self._contract.get_timeline()
-        simulation_tenors = self.find_simulation_tenors()
-        num_of_tenors = len(simulation_tenors)
-        num_of_paths = self._params.num_of_paths
-        rnd_num = self.generate_std_norm(num_of_tenors)
-        spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
-        spot = model.get_spot()
-        vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
-        for path in range(num_of_paths):
-            spot_paths[path, 0] = spot
-            for t_idx in range(1, num_of_tenors):
-                t_from = simulation_tenors[t_idx - 1]
-                t_to = simulation_tenors[t_idx]
-                spot_from = spot_paths[path, t_idx - 1]
-                z = rnd_num[path, t_idx]
-                spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
-        contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
-        return spot_paths[:, contract_tenor_idx]
+    def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
+
+
+
+
+
+
+        
+
+
+
+
+
+
+        # vol = self._model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
+        # rate = self._model.get_rate()
+        # dt = t_to - t_from
+        # return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 # todo: to be implemented
