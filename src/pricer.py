@@ -430,7 +430,9 @@ class GenericMCPricer(Pricer):
             # adjust path_payoff inplace
             self.apply_control_var_adj(path_payoff, spot_paths)
         fv = mean(path_payoff) * self._model.get_df(maturity)
-        return fv
+        fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
+                      * self._model.get_df(maturity) for mult in [-1, 1]]
+        return fv, fv_contint
 
     def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
         pricer_cv = self.get_controlvar_helper_pricer(self._contract)
@@ -477,34 +479,16 @@ class AsianMomentmatchingPricer(Pricer):
         moment_first = spot / n * sum([np.exp(rate*t_i) for t_i in timeline])
         moment_second = spot**2/n**2 * sum(
             [np.exp(rate*(t_i+t_j) + vol**2*min(t_i,t_j)) for t_i in timeline for t_j in timeline])
-        param1 = 2*np.log(moment_first) - np.log(moment_second)/2
-        param2 = math.sqrt(np.log(moment_second) - 2*np.log(moment_first))
-        d1 = (np.log(1/strike) + param1 + param2**2) / param2
+        param1 = 2*np.log(moment_first/spot) - np.log(moment_second/spot**2)/2
+        param2 = math.sqrt(np.log(moment_second/spot**2) - 2*np.log(moment_first/spot))
+        d1 = (np.log(spot/strike) + param1 + param2**2) / param2
         d2 = d1 - param2
         if self._contract.get_type() == PutCallFwd.CALL:
-            return direction * df * (np.exp(param1 + (param2**2)/2) * norm.cdf(d1) - strike * norm.cdf(d2))
+            return direction * df * (spot * np.exp(param1 + (param2**2)/2) * norm.cdf(d1) - strike * norm.cdf(d2))
         elif self._contract.get_type() == PutCallFwd.PUT:
-            return direction * df * (strike * norm.cdf(-d2) - (np.exp(param1 + (param2**2)/2)) * norm.cdf(-d1))
+            return direction * df * (strike * norm.cdf(-d2) - (spot * np.exp(param1 + (param2**2)/2)) * norm.cdf(-d1))
         else:
             self._contract.raise_incorrect_derivative_type_error()
 
 
-underlying = Stock.BLUECHIP_BANK
-MarketData.initialize()
-volgrid = MarketData.get_vol_grid()[underlying]
-contract = AsianContract(underlying, PutCallFwd.PUT, LongShort.LONG, 100, 1, 100)
-model = FlatVolModel(underlying)
-params = Params()
-pricer_MM = AsianMomentmatchingPricer(contract, model, params)
-print(pricer_MM.calc_fair_value())
-
-# MCParams(Params):
-#     def __init__(self) -> None:
-#         # todo: to be implemented, a few examples:
-#         self.seed: int = 0
-#         self.num_of_paths: int = 100
-#         self.timestep: int = 10
-params_MC = MCParams()
-pricer_MC = GenericMCPricer(contract, model, params_MC)
-print(pricer_MC.calc_fair_value())
 
