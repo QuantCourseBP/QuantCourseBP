@@ -12,8 +12,7 @@ class CalcEngine:
     __GENERIC_NUMERICAL_METHODS: list[str] = [
         TreeMethod.__name__,
         PDEMethod.__name__,
-        MCMethod.__name__,
-        MMMethod.__name__,    # moment matching, for Asian pricing
+        MCMethod.__name__
     ]
 
     def __init__(self, contracts: list[Contract], model_name: str, method_name: str, params: Params) -> None:
