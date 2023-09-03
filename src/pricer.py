@@ -107,6 +107,9 @@ class Pricer(ABC):
         raise ValueError(f'Unsupported GreekMethod {method} for Pricer {type(self).__name__}. '
                          f'Supported methods are: {", ".join(supported)}')
 
+    def _raise_pricer_not_implemented_error(self) -> None:
+        raise ValueError(f'The pricing of this type of contract has not been implemented yet.')
+
     @property
     def params(self):
         return self._params
@@ -191,12 +194,12 @@ class ForwardAnalyticPricer(Pricer):
 
 class EuropeanAnalyticPricer(Pricer):
     @staticmethod
-    def d1(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float) -> float:
-        return 1 / (vol * np.sqrt(time_to_expiry)) * (np.log(spot / strike) + (rate + vol**2 / 2) * time_to_expiry)
+    def d1(s: float, vol: float, rate: float, time_to_expiry: float) -> float:
+        return 1 / (vol * np.sqrt(time_to_expiry)) * (np.log(s) + (rate + vol**2 / 2) * time_to_expiry)
 
     @staticmethod
-    def d2(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float) -> float:
-        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+    def d2(s: float, vol: float, rate: float, time_to_expiry: float) -> float:
+        d1 = EuropeanAnalyticPricer.d1(s, vol, rate, time_to_expiry)
         return d1 - vol * np.sqrt(time_to_expiry)
 
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: Params) -> None:
@@ -213,8 +216,8 @@ class EuropeanAnalyticPricer(Pricer):
         vol = self._model.get_vol(strike, expiry)
         rate = self._model.get_rate()
         df = self._model.get_df(time_to_expiry)
-        d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
-        d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
+        d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
         if self._contract.get_type() == PutCallFwd.CALL:
             return direction * (spot * norm.cdf(d1) - strike * df * norm.cdf(d2))
         elif self._contract.get_type() == PutCallFwd.PUT:
@@ -231,7 +234,7 @@ class EuropeanAnalyticPricer(Pricer):
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = norm.cdf(d1)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -253,7 +256,7 @@ class EuropeanAnalyticPricer(Pricer):
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = norm.pdf(d1) / (spot * vol * np.sqrt(time_to_expiry))
             else:
@@ -274,7 +277,7 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
             df = self._model.get_df(time_to_expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.get_type() in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = strike * df * norm.pdf(d2) * np.sqrt(time_to_expiry)
             else:
@@ -295,8 +298,8 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
             df = self._model.get_df(time_to_expiry)
-            d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
+            d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = -1.0 * ((spot * norm.pdf(d1) * vol) / (2 * np.sqrt(time_to_expiry))
                                 + rate * strike * df * norm.cdf(d2))
@@ -321,7 +324,7 @@ class EuropeanAnalyticPricer(Pricer):
             vol = self._model.get_vol(strike, expiry)
             rate = self._model.get_rate()
             df = self._model.get_df(time_to_expiry)
-            d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
+            d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.get_type() == PutCallFwd.CALL:
                 greek = strike * time_to_expiry * df * norm.cdf(d2)
             elif self._contract.get_type() == PutCallFwd.PUT:
@@ -459,7 +462,7 @@ class GenericMCPricer(Pricer):
             raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
 
 class AsianMomentmatchingPricer(Pricer):
-    def __init__(self, contract: AsianContract, model: MarketModel, params: AsianParams):
+    def __init__(self, contract: AsianContract, model: MarketModel, params: Params):
         if not isinstance(contract, AsianContract):
             raise TypeError(f'Contract must be of type AsianContract but received {type(contract).__name__}')
         super().__init__(contract, model, params)
@@ -489,6 +492,80 @@ class AsianMomentmatchingPricer(Pricer):
             return direction * df * (strike * norm.cdf(-d2) - (spot * np.exp(param1 + (param2**2)/2)) * norm.cdf(-d1))
         else:
             self._contract.raise_incorrect_derivative_type_error()
+
+
+
+class BarrierAnalyticPricer(Pricer):
+    def __init__(self, contract: EuropeanBarrierContract, model: MarketModel, params: Params):
+        if not isinstance(contract, EuropeanBarrierContract):
+            raise TypeError(f'Contract must be of type EuropeanBarrierContract but received {type(contract).__name__}')
+        super().__init__(contract, model, params)
+
+    def calc_fair_value(self) -> float:
+        direction = self._contract.get_direction()
+        strike = self._contract.get_strike()
+        expiry = self._contract.get_expiry()
+        time_to_expiry = expiry - self._get_valuation_time()
+        spot = self._model.get_spot()
+        vol = self._model.get_vol(strike, expiry)
+        rate = self._model.get_rate()
+        df = self._model.get_df(time_to_expiry)
+        barrier = self._contract.get_barrier().get_barrier_level()
+        updown = self._contract.get_barrier().get_up_down()
+        inout = self._contract.get_barrier().get_in_out()
+
+        if (self._contract.get_type() == PutCallFwd.CALL) & (updown == UpDown.DOWN) & (inout == InOut.IN):
+            part1 = spot * (barrier/spot)**(2*rate/vol**2+1) * \
+                    norm.cdf(EuropeanAnalyticPricer.d1(barrier**2/(strike*spot), vol, rate, time_to_expiry))
+            part2 = strike * (barrier/spot)**(2*rate/vol**2-1) * \
+                    norm.cdf(EuropeanAnalyticPricer.d2(barrier**2/(strike*spot), vol, rate, time_to_expiry))
+            return direction * (part1 - df * part2)
+        else:
+            self._raise_pricer_not_implemented_error()
+            # self._contract.raise_incorrect_derivative_type_error()
+
+
+import sys
+from pathlib import Path
+import numpy as np
+import matplotlib.pyplot as plt
+
+current = Path().resolve()
+sys.path.append(str(current))
+sys.path.append(str(current.parents[1]))
+
+from src.enums import *
+from src.utils import *
+# from src.market_data import *
+# from src.pricer import *
+# Make charts interactive
+
+# Initialize market data
+MarketData.initialize()
+
+underlying = Stock.TEST_COMPANY
+spot = FlatVolModel(underlying).get_spot()
+print(spot)
+
+moneyness = 1
+expiry = 1
+strike = spot * moneyness
+vol = FlatVolModel(underlying).get_vol(strike, expiry)
+print(vol)
+
+nr_monitoring_points = 100
+barrier = 90
+up_down = UpDown.DOWN
+in_out = InOut.IN
+
+volgrid = MarketData.get_vol_grid()[underlying]
+contract = EuropeanBarrierContract(underlying, PutCallFwd.CALL, LongShort.LONG, strike, expiry,
+                                   nr_monitoring_points, barrier, up_down, in_out)
+model = FlatVolModel(underlying)
+params = Params()
+pricer_AN = BarrierAnalyticPricer(contract, model, params)
+print(pricer_AN.calc_fair_value())
+
 
 
 
