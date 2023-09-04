@@ -47,7 +47,7 @@ class MCMethod(NumericalMethod):
             rnd = np.random.standard_normal(size=(self._params.num_of_paths, num_of_tenors))
         if self._params.standardize:
             mean = np.mean(rnd)
-            std = np.std(rnd)
+            std = np.std(rnd, ddof=1)
             rnd = (rnd - mean) / std
         return rnd
 
