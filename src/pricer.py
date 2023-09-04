@@ -525,46 +525,46 @@ class BarrierAnalyticPricer(Pricer):
             # self._contract.raise_incorrect_derivative_type_error()
 
 
-import sys
-from pathlib import Path
-import numpy as np
-import matplotlib.pyplot as plt
-
-current = Path().resolve()
-sys.path.append(str(current))
-sys.path.append(str(current.parents[1]))
-
-from src.enums import *
-from src.utils import *
-# from src.market_data import *
-# from src.pricer import *
-# Make charts interactive
-
-# Initialize market data
-MarketData.initialize()
-
-underlying = Stock.TEST_COMPANY
-spot = FlatVolModel(underlying).get_spot()
-print(spot)
-
-moneyness = 1
-expiry = 1
-strike = spot * moneyness
-vol = FlatVolModel(underlying).get_vol(strike, expiry)
-print(vol)
-
-nr_monitoring_points = 100
-barrier = 90
-up_down = UpDown.DOWN
-in_out = InOut.IN
-
-volgrid = MarketData.get_vol_grid()[underlying]
-contract = EuropeanBarrierContract(underlying, PutCallFwd.CALL, LongShort.LONG, strike, expiry,
-                                   nr_monitoring_points, barrier, up_down, in_out)
-model = FlatVolModel(underlying)
-params = Params()
-pricer_AN = BarrierAnalyticPricer(contract, model, params)
-print(pricer_AN.calc_fair_value())
+# import sys
+# from pathlib import Path
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# current = Path().resolve()
+# sys.path.append(str(current))
+# sys.path.append(str(current.parents[1]))
+#
+# from src.enums import *
+# from src.utils import *
+# # from src.market_data import *
+# # from src.pricer import *
+# # Make charts interactive
+#
+# # Initialize market data
+# MarketData.initialize()
+#
+# underlying = Stock.TEST_COMPANY
+# spot = FlatVolModel(underlying).get_spot()
+# print(spot)
+#
+# moneyness = 1
+# expiry = 1
+# strike = spot * moneyness
+# vol = FlatVolModel(underlying).get_vol(strike, expiry)
+# print(vol)
+#
+# nr_monitoring_points = 100
+# barrier = 90
+# up_down = UpDown.DOWN
+# in_out = InOut.IN
+#
+# volgrid = MarketData.get_vol_grid()[underlying]
+# contract = EuropeanBarrierContract(underlying, PutCallFwd.CALL, LongShort.LONG, strike, expiry,
+#                                    nr_monitoring_points, barrier, up_down, in_out)
+# model = FlatVolModel(underlying)
+# params = Params()
+# pricer_AN = BarrierAnalyticPricer(contract, model, params)
+# print(pricer_AN.calc_fair_value())
 
 
 
