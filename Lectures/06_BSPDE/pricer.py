@@ -57,8 +57,8 @@ class Pricer(ABC):
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        strike = self._contract.get_strike()
-        expiry = self._contract.get_expiry()
+        strike = self._contract.strike
+        expiry = self._contract.expiry
         vol = self._model.get_vol(strike, expiry)
         bump_size = self.RELATIVE_BUMP_SIZE * vol
         bumped_fair_values = list()
@@ -112,7 +112,7 @@ class EuropeanPDEPricer(Pricer):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
         if not isinstance(params, PDEParams):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
-        self._derivative_type = contract.get_type()
+        self._derivative_type = contract.derivative_type
         self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
         self._initial_spot = model.get_spot()
@@ -143,6 +143,3 @@ class EuropeanPDEPricer(Pricer):
         else:
             return self.grid[down, 0] + (self.grid[up, 0] - self.grid[down, 0]) * \
                    (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
-
-
-

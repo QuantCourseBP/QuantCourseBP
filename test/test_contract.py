@@ -45,21 +45,21 @@ class TestPayoff:
         spot = spot * self.ref_spot
         strike = strike * self.ref_spot
         contract = ForwardContract(self.underlying, self.long_short, strike, self.expiry)
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(spot - strike)
 
     def test_call_payoff(self, spot, strike):
         spot = spot * self.ref_spot
         strike = strike * self.ref_spot
         contract = EuropeanContract(self.underlying, PutCallFwd.CALL, self.long_short, strike, self.expiry)
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(max(spot - strike, 0))
 
     def test_put_payoff(self, spot, strike):
         spot = spot * self.ref_spot
         strike = strike * self.ref_spot
         contract = EuropeanContract(self.underlying, PutCallFwd.PUT, self.long_short, strike, self.expiry)
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(max(strike - spot, 0))
 
 
@@ -76,7 +76,7 @@ class TestGenericPayoff:
         strike = strike * self.ref_spot
         contract = ForwardContract(self.underlying, long_short, strike, self.expiry)
         generic = contract.convert_to_generic()
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))
 
     @pytest.mark.parametrize('spot', np.arange(0.5, 2, 0.5))
@@ -86,7 +86,7 @@ class TestGenericPayoff:
         strike = strike * self.ref_spot
         contract = EuropeanContract(self.underlying, put_call, long_short, strike, self.expiry)
         generic = contract.convert_to_generic()
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))
 
     @pytest.mark.parametrize('spot', np.arange(0.5, 2, 0.5))
@@ -96,7 +96,7 @@ class TestGenericPayoff:
         strike = strike * self.ref_spot
         contract = AmericanContract(self.underlying, put_call, long_short, strike, self.expiry)
         generic = contract.convert_to_generic()
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))
 
     @pytest.mark.parametrize('spot', np.arange(0.5, 2, 0.5))
@@ -106,7 +106,7 @@ class TestGenericPayoff:
         strike = strike * self.ref_spot
         contract = EuropeanDigitalContract(self.underlying, put_call, long_short, strike, self.expiry)
         generic = contract.convert_to_generic()
-        obs = {round(self.expiry, contract.TIMELINE_DIGITS): spot}
+        obs = {round(self.expiry, contract.timeline_digits): spot}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))
 
     @pytest.mark.parametrize('spot', [np.arange(1.2, 0.7, -0.05), np.arange(1, 2, 0.1)])
@@ -117,7 +117,7 @@ class TestGenericPayoff:
         num_mon = len(spot)
         contract = AsianContract(self.underlying, put_call, long_short, strike, self.expiry, num_mon)
         generic = contract.convert_to_generic()
-        obs = {round(((i + 1) / num_mon) * self.expiry, contract.TIMELINE_DIGITS): spot[i] for i in range(num_mon)}
+        obs = {round(((i + 1) / num_mon) * self.expiry, contract.timeline_digits): spot[i] for i in range(num_mon)}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))
 
     @pytest.mark.parametrize('spot', [np.arange(1.2, 0.7, -0.05), np.arange(1, 2, 0.1)])
@@ -133,5 +133,5 @@ class TestGenericPayoff:
         contract = EuropeanBarrierContract(
             self.underlying, put_call, long_short, strike, self.expiry, num_mon, barrier, up_down, in_out)
         generic = contract.convert_to_generic()
-        obs = {round(((i + 1) / num_mon) * self.expiry, contract.TIMELINE_DIGITS): spot[i] for i in range(num_mon)}
+        obs = {round(((i + 1) / num_mon) * self.expiry, contract.timeline_digits): spot[i] for i in range(num_mon)}
         assert contract.payoff(obs) == pytest.approx(generic.payoff(obs))

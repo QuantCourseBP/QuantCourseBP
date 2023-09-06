@@ -54,12 +54,12 @@ class BlackScholesPDE(PDEMethod):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
         self.contract = contract
-        self.exp = contract.get_expiry()
-        self.strike = contract.get_strike()
-        self.sigma = model.get_vol(contract.get_strike(), contract.get_expiry())
+        self.exp = contract.expiry
+        self.strike = contract.strike
+        self.sigma = model.get_vol(contract.strike, contract.expiry)
         self.time_step = params.time_step
         self.und_step = params.und_step
-        self.derivative_type = contract.get_type()
+        self.derivative_type = contract.derivative_type
         self.stock_min = params.stock_min_mult * model.get_spot()
         self.stock_max = params.stock_max_mult * model.get_spot()
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps

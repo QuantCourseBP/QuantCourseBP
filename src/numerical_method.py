@@ -69,7 +69,7 @@ class MCMethodFlatVol(MCMethod):
         rnd_num = self.generate_std_norm(num_of_tenors)
         spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
         spot = model.get_spot()
-        vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
+        vol = model.get_vol(self._contract.strike, self._contract.expiry)
         for path in range(num_of_paths):
             spot_paths[path, 0] = spot
             for t_idx in range(1, num_of_tenors):
@@ -123,7 +123,7 @@ class SimpleBinomialTree(NumericalMethod):
     def compute_df(self):
         if self._df_computed:
             pass
-        delta_t = self._contract.get_expiry() / self._params.nr_steps
+        delta_t = self._contract.expiry / self._params.nr_steps
         df_1_step = self._model.get_df(delta_t)
         self._df = [df_1_step ** k for k in range(self._params.nr_steps + 1)]
         self._df_computed = True
@@ -145,14 +145,14 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         up = BalancedSimpleBinomialTree.calc_up_step_mult(
             model.get_rate(),
-            model.get_vol(contract.get_strike(), contract.get_expiry()),
+            model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
-            contract.get_expiry())
+            contract.expiry)
         down = BalancedSimpleBinomialTree.calc_down_step_mult(
             model.get_rate(),
-            model.get_vol(contract.get_strike(), contract.get_expiry()),
+            model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
-            contract.get_expiry())
+            contract.expiry)
         p = TreeParams(params.nr_steps, up, down)
         super().__init__(contract, model, p)
 
@@ -210,12 +210,12 @@ class BlackScholesPDE(PDEMethod):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
         self.contract = contract
-        self.exp = contract.get_expiry()
-        self.strike = contract.get_strike()
-        self.sigma = model.get_vol(contract.get_strike(), contract.get_expiry())
+        self.exp = contract.expiry
+        self.strike = contract.strike
+        self.sigma = model.get_vol(contract.strike, contract.expiry)
         self.time_step = params.time_step
         self.und_step = params.und_step
-        self.derivative_type = contract.get_type()
+        self.derivative_type = contract.derivative_type
         self.stock_min = params.stock_min_mult * model.get_spot()
         self.stock_max = params.stock_max_mult * model.get_spot()
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
