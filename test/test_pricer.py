@@ -146,7 +146,7 @@ class TestEuropeanPDEPricer:
     expiry = 2.0
     strike = 0.95 * MarketData.get_spot()[und]
     model = FlatVolModel(und)
-    params = [PDEParams(method=BSPDEMethod.EXPLICIT), PDEParams(method=BSPDEMethod.IMPLICIT), PDEParams(method=BSPDEMethod.CRANKNICOLSON)]
+    params = [PDEParams(method=BSPDEMethod.EXPLICIT), PDEParams(method=BSPDEMethod.IMPLICIT), PDEParams(method=BSPDEMethod.CRANK_NICOLSON)]
     contract = EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry)
     pvs = [19.559315913934707, 19.557755216197634, 19.558594355475716]
 

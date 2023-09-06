@@ -394,7 +394,7 @@ class EuropeanPDEPricer(Pricer):
             self._bsPDE.explicit_method()
         elif self.method == BSPDEMethod.IMPLICIT:
             self._bsPDE.implicit_method()
-        elif self.method == BSPDEMethod.CRANKNICOLSON:
+        elif self.method == BSPDEMethod.CRANK_NICOLSON:
             self._bsPDE.crank_nicolson_method()
         else:
             raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")

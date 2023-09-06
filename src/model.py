@@ -25,9 +25,7 @@ class MarketModel(ABC):
         self._spot += bump_size
 
     def bump_volgrid(self, bump_size: float) -> None:
-        values = self._volgrid.get_values()
-        values += bump_size
-        self._volgrid = VolGrid(self._volgrid.get_underlying(), self._volgrid.get_points(), values)
+        self._volgrid.values += bump_size
 
     def get_df(self, tenor: float) -> float:
         return np.exp(-1.0 * self._interest_rate * tenor)
