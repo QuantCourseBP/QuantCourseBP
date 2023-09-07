@@ -194,12 +194,12 @@ class ForwardAnalyticPricer(Pricer):
 
 class EuropeanAnalyticPricer(Pricer):
     @staticmethod
-    def d1(s: float, vol: float, rate: float, time_to_expiry: float) -> float:
-        return 1 / (vol * np.sqrt(time_to_expiry)) * (np.log(s) + (rate + vol**2 / 2) * time_to_expiry)
+    def d1(spot: float, vol: float, rate: float, time_to_expiry: float) -> float:
+        return 1 / (vol * np.sqrt(time_to_expiry)) * (np.log(spot) + (rate + vol**2 / 2) * time_to_expiry)
 
     @staticmethod
-    def d2(s: float, vol: float, rate: float, time_to_expiry: float) -> float:
-        d1 = EuropeanAnalyticPricer.d1(s, vol, rate, time_to_expiry)
+    def d2(spot: float, vol: float, rate: float, time_to_expiry: float) -> float:
+        d1 = EuropeanAnalyticPricer.d1(spot, vol, rate, time_to_expiry)
         return d1 - vol * np.sqrt(time_to_expiry)
 
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: Params) -> None:
@@ -426,7 +426,8 @@ class GenericMCPricer(Pricer):
         num_of_paths = self._params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
-            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
+            fixing_schedule = dict(zip([0] + contractual_timeline,
+                                        np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.get_expiry()
         if self.params.control_variate:
@@ -460,6 +461,7 @@ class GenericMCPricer(Pricer):
             return ForwardAnalyticPricer(contract_cv, self._model, Params())
         else:
             raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
+
 
 class AsianMomentmatchingPricer(Pricer):
     def __init__(self, contract: AsianContract, model: MarketModel, params: Params):
@@ -501,6 +503,12 @@ class BarrierAnalyticPricer(Pricer):
             raise TypeError(f'Contract must be of type EuropeanBarrierContract but received {type(contract).__name__}')
         super().__init__(contract, model, params)
 
+    @staticmethod
+    def bs_call(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float, df: float) -> float:
+        d1 = EuropeanAnalyticPricer.d1(spot / strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.d2(spot / strike, vol, rate, time_to_expiry)
+        return spot * norm.cdf(d1) - strike * df * norm.cdf(d2)
+
     def calc_fair_value(self) -> float:
         direction = self._contract.get_direction()
         strike = self._contract.get_strike()
@@ -514,58 +522,51 @@ class BarrierAnalyticPricer(Pricer):
         updown = self._contract.get_barrier().get_up_down()
         inout = self._contract.get_barrier().get_in_out()
 
-        if (self._contract.get_type() == PutCallFwd.CALL) & (updown == UpDown.DOWN) & (inout == InOut.IN):
-            part1 = spot * (barrier/spot)**(2*rate/vol**2+1) * \
-                    norm.cdf(EuropeanAnalyticPricer.d1(barrier**2/(strike*spot), vol, rate, time_to_expiry))
-            part2 = strike * (barrier/spot)**(2*rate/vol**2-1) * \
-                    norm.cdf(EuropeanAnalyticPricer.d2(barrier**2/(strike*spot), vol, rate, time_to_expiry))
-            return direction * (part1 - df * part2)
+        if self._contract.get_type() == PutCallFwd.CALL:
+            if updown == UpDown.DOWN:
+                if inout == InOut.IN:
+                    return direction * spot * (barrier / spot) ** (2 * rate / vol **2) * \
+                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
+                if inout == InOut.OUT:
+                    price_bs = BarrierAnalyticPricer.bs_call(spot, strike, vol, rate, time_to_expiry, df)
+                    price_dic = direction * spot * (barrier / spot) ** (2 * rate / vol ** 2) * \
+                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
+                    return price_bs - price_dic
         else:
             self._raise_pricer_not_implemented_error()
             # self._contract.raise_incorrect_derivative_type_error()
 
 
-# import sys
-# from pathlib import Path
-# import numpy as np
-# import matplotlib.pyplot as plt
-#
-# current = Path().resolve()
-# sys.path.append(str(current))
-# sys.path.append(str(current.parents[1]))
-#
-# from src.enums import *
-# from src.utils import *
-# # from src.market_data import *
-# # from src.pricer import *
-# # Make charts interactive
-#
-# # Initialize market data
-# MarketData.initialize()
-#
-# underlying = Stock.TEST_COMPANY
-# spot = FlatVolModel(underlying).get_spot()
-# print(spot)
-#
-# moneyness = 1
-# expiry = 1
-# strike = spot * moneyness
-# vol = FlatVolModel(underlying).get_vol(strike, expiry)
-# print(vol)
-#
-# nr_monitoring_points = 100
-# barrier = 90
-# up_down = UpDown.DOWN
-# in_out = InOut.IN
-#
-# volgrid = MarketData.get_vol_grid()[underlying]
-# contract = EuropeanBarrierContract(underlying, PutCallFwd.CALL, LongShort.LONG, strike, expiry,
-#                                    nr_monitoring_points, barrier, up_down, in_out)
-# model = FlatVolModel(underlying)
-# params = Params()
-# pricer_AN = BarrierAnalyticPricer(contract, model, params)
-# print(pricer_AN.calc_fair_value())
+class BarrierBrownianBridgePricer(Pricer):
+    def __init__(self, contract: EuropeanBarrierContract, model: MarketModel, params: Params):
+        if not isinstance(contract, EuropeanBarrierContract):
+            raise TypeError(f'Contract must be of type EuropeanBarrierContract but received {type(contract).__name__}')
+        super().__init__(contract, model, params)
 
+        if isinstance(model, FlatVolModel):
+            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
+        else:
+            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
+
+    def calc_fair_value(self) -> float:
+            contract = self._contract
+            # num_mon_mod = round(contract._num_mon / 10)    # BB specific
+            num_mon_mod = contract._num_mon
+            contract.set_num_mon(num_mon_mod)
+            contractual_timeline = contract.get_timeline()
+            spot_paths = self._mc_method.simulate_spot_paths()
+            num_of_paths = self._params.num_of_paths
+            contract.set_vol(self._model.get_vol(contract._strike, contract._expiry))   # BB specific
+            path_payoff = np.empty(num_of_paths)
+            for path in range(num_of_paths):
+                fixing_schedule = dict(zip([0] + contractual_timeline,
+                                           np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
+                path_payoff[path] = contract.payoff(fixing_schedule)
+            maturity = contract.get_expiry()
+            fv = mean(path_payoff) * self._model.get_df(maturity)
+            fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
+                          * self._model.get_df(maturity) for mult in [-1, 1]]
+            return fv, fv_contint
 
 
 

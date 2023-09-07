@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from src.enums import *
+from src.utils import *
 from statistics import mean
 import numpy as np
 
@@ -18,6 +19,7 @@ class Contract(ABC):
         self._expiry: float = exp
         self._num_mon: int = round(max(num_mon, 1))  # Asian: nr of averaging points; Barrier: nr of monitoring points
         self._contract_type: str = type(self).get_contract_type_static()
+        self._vol: float = -1
 
     @classmethod
     def get_contract_type_static(cls):
@@ -44,6 +46,12 @@ class Contract(ABC):
 
     def get_expiry(self) -> float:
         return self._expiry
+
+    def set_num_mon(self, num_mon: Float) -> None:
+        self._num_mon = num_mon
+
+    def set_vol(self, vol: Float) -> None:
+        self._vol = vol
 
     def __str__(self) -> str:
         return str(self.to_dict())
@@ -236,7 +244,8 @@ class EuropeanBarrierContract(Contract):
             self._raise_missing_spot_error(list(spot.keys()))
         obs = [spot[t] for t in timeline]
         in_out = self._barrier.get_in_out()
-        is_breached = int(self._barrier.is_breached(obs))
+        is_breached = self._barrier.is_breached(spot, self._vol)
+
         mult = float(int(in_out == InOut.IN) * is_breached + int(in_out == InOut.OUT) * (1 - is_breached))
         if self._derivative_type == PutCallFwd.CALL:
             return self._direction * mult * max(obs[-1] - self._strike, 0)
@@ -293,7 +302,7 @@ class GenericContract(Contract):
             mult = 1.0
             if self._barrier is not None:
                 in_out = self._barrier.get_in_out()
-                is_breached = int(self._barrier.is_breached(obs))
+                is_breached = self._barrier.is_breached(spot, self._vol)
                 mult = float(int(in_out == InOut.IN) * is_breached + int(in_out == InOut.OUT) * (1 - is_breached))
             payoff = (obs[-1] - self._strike)
             return self._direction * mult * max(call_put * payoff, 0)
@@ -320,13 +329,24 @@ class Barrier:
     def get_in_out(self) -> InOut:
         return self._in_out
 
-    def is_breached(self, observations: list[float]) -> bool:
-        if self._up_down == UpDown.UP:
-            return any([self._barrier_level <= price for price in observations])
-        elif self._up_down == UpDown.DOWN:
-            return any([self._barrier_level >= price for price in observations])
+    def is_breached(self, spot: dict[float, float], vol: float = -1) -> float:
+        timeline = list(spot.keys())
+        observations = [spot[t] for t in timeline]
+        if vol == -1:
+            if self._up_down == UpDown.UP:
+                return float(any([self._barrier_level <= price for price in observations]))
+            elif self._up_down == UpDown.DOWN:
+                return float(any([self._barrier_level >= price for price in observations]))
+            else:
+                self._raise_incorrect_up_down_type()
         else:
-            self._raise_incorrect_up_down_type()
+            probs_no_breach = []
+            for i in range(len(timeline)-1):
+                prob = prob_breach_barrier_segment(self._barrier_level, vol, timeline[i], timeline[i+1],
+                                                   observations[i], observations[i+1], self._up_down)
+                probs_no_breach.append(1-prob)
+            return 1 - np.prod(probs_no_breach)
+
 
     def _raise_incorrect_up_down_type(self):
         raise TypeError(f'Updown parameter of {type(self).__name__} must be UP or DOWN')
