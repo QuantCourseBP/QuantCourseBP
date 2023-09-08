@@ -353,18 +353,18 @@ class GenericTreePricer(Pricer):
 
     def calc_fair_value(self) -> float:
         self._tree_method.init_tree()
-        spot_tree = self._tree_method._spot_tree
+        spot_tree = self._tree_method.spot_tree
         price_tree = [[np.nan for _ in level] for level in spot_tree]
         for i in range(len(spot_tree[-1])):
             log_spot = spot_tree[-1][i]
             spot = {self._contract.get_timeline()[0]: np.exp(log_spot)}
-            discounted_price = self._tree_method._df[-1] * self._contract.payoff(spot)
+            discounted_price = self._tree_method.df[-1] * self._contract.payoff(spot)
             price_tree[-1][i] = discounted_price
         for step in range(self._params.nr_steps - 1, -1, -1):
             for i in range(len(spot_tree[step])):
                 # discounted price is martingale
-                discounted_price = self._tree_method._prob[0] * price_tree[step + 1][i] + \
-                                   self._tree_method._prob[1] * price_tree[step + 1][i + 1]
+                discounted_price = self._tree_method.prob[0] * price_tree[step + 1][i] + \
+                                   self._tree_method.prob[1] * price_tree[step + 1][i + 1]
                 price_tree[step][i] = discounted_price
         return price_tree[0][0]
 
@@ -522,4 +522,3 @@ class BarrierAnalyticPricer(Pricer):
             return direction * (part1 - df * part2)
         else:
             self._raise_pricer_not_implemented_error()
-            # self._contract.raise_incorrect_derivative_type_error()
