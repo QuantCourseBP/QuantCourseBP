@@ -29,7 +29,7 @@ class MarketData:
             MarketData.spot[stock] = data.at[name, 'spot']
 
     @staticmethod
-    def load_vol_grid() -> None:
+    def load_volgrid() -> None:
         for stock in Stock:
             name = stock.value
             filename = MarketData.filename_vol_grid.format(und=name.lower())
@@ -44,7 +44,7 @@ class MarketData:
     @staticmethod
     def initialize() -> None:
         MarketData.load_spot()
-        MarketData.load_vol_grid()
+        MarketData.load_volgrid()
         MarketData.is_initialized = True
 
     @staticmethod
@@ -64,7 +64,7 @@ class MarketData:
         return MarketData.spot
 
     @staticmethod
-    def get_vol_grid() -> dict[Stock, VolGrid]:
+    def get_volgrid() -> dict[Stock, VolGrid]:
         MarketData.validate()
         return MarketData.vol_grid
 

@@ -33,12 +33,12 @@ class LongShort(str, Enum):
     SHORT: str = 'SHORT'
 
 
-class UpDown(str, Enum):     # for Barrier Contract
+class UpDown(str, Enum):  # for Barrier Contract
     UP: str = 'UP'
     DOWN: str = 'DOWN'
 
 
-class InOut(str, Enum):     # for Barrier Contract
+class InOut(str, Enum):  # for Barrier Contract
     IN: str = 'IN'
     OUT: str = 'OUT'
 
@@ -52,5 +52,3 @@ class BSPDEMethod(str, Enum):
     EXPLICIT: str = 'EXPLICIT'
     IMPLICIT: str = 'IMPLICIT'
     CRANK_NICOLSON: str = 'CRANK_NICOLSON'
-
-

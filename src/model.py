@@ -6,29 +6,23 @@ import numpy as np
 
 
 class MarketModel(ABC):
-    def __init__(self, und: Stock) -> None:
-        self._und: Stock = und
-        self._interest_rate: float = MarketData.get_risk_free_rate()
-        self._spot: float = MarketData.get_spot()[self._und]
-        self._volgrid: VolGrid = MarketData.get_vol_grid()[self._und]
-
-    def get_rate(self) -> float:
-        return self._interest_rate
+    def __init__(self, underlying: Stock) -> None:
+        self.underlying: Stock = underlying
+        self.risk_free_rate: float = MarketData.get_risk_free_rate()
+        self.spot: float = MarketData.get_spot()[self.underlying]
+        self.volgrid: VolGrid = MarketData.get_volgrid()[self.underlying]
 
     def bump_rate(self, bump_size: float) -> None:
-        self._interest_rate += bump_size
-
-    def get_spot(self) -> float:
-        return self._spot
+        self.risk_free_rate += bump_size
 
     def bump_spot(self, bump_size: float) -> None:
-        self._spot += bump_size
+        self.spot += bump_size
 
     def bump_volgrid(self, bump_size: float) -> None:
-        self._volgrid.values += bump_size
+        self.volgrid.values += bump_size
 
-    def get_df(self, tenor: float) -> float:
-        return np.exp(-1.0 * self._interest_rate * tenor)
+    def calc_df(self, tenor: float) -> float:
+        return np.exp(-1.0 * self.risk_free_rate * tenor)
 
     @abstractmethod
     def get_vol(self, strike: float, expiry: float) -> float:
@@ -44,11 +38,11 @@ class MarketModel(ABC):
 
 
 class BSVolModel(MarketModel):
-    def __init__(self, und: Stock):
-        super().__init__(und)
+    def __init__(self, underlying: Stock):
+        super().__init__(underlying)
         # Reference spot is used to calculate ATM strike to imply the volatility.
         # Its value is not bumped in case of greek calculation.
-        self.__reference_spot = MarketData.get_spot()[self._und]
+        self.reference_spot = MarketData.get_spot()[self.underlying]
 
     def get_vol(self, strike: float, expiry: float) -> float:
         """
@@ -58,20 +52,20 @@ class BSVolModel(MarketModel):
         :param expiry: Expiry of option contract. Ignored.
         :return: Implied volatility.
         """
-        atm_strike = 1.0 * self.__reference_spot
+        atm_strike = 1.0 * self.reference_spot
         expiry = 1.0
         coordinate = np.array([(atm_strike, expiry)])
-        return self._volgrid.get_vol(coordinate)[0]
+        return self.volgrid.get_vol(coordinate)[0]
 
     def evolve_simulated_spot(self, vol: float, t_from: float, t_to: float, spot_from: float, z: float) -> float:
-        rate = self._interest_rate
+        rate = self.risk_free_rate
         dt = t_to - t_from
         return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 class FlatVolModel(MarketModel):
-    def __init__(self, und: Stock):
-        super().__init__(und)
+    def __init__(self, underlying: Stock):
+        super().__init__(underlying)
 
     def get_vol(self, strike: float, expiry: float) -> float:
         """
@@ -81,9 +75,9 @@ class FlatVolModel(MarketModel):
         :return: Implied volatility.
         """
         coordinate = np.array([(strike, expiry)])
-        return self._volgrid.get_vol(coordinate)[0]
+        return self.volgrid.get_vol(coordinate)[0]
 
     def evolve_simulated_spot(self, vol: float, t_from: float, t_to: float, spot_from: float, z: float) -> float:
-        rate = self._interest_rate
+        rate = self.risk_free_rate
         dt = t_to - t_from
         return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))

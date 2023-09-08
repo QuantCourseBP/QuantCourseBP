@@ -68,7 +68,7 @@ class MCMethodFlatVol(MCMethod):
         num_of_paths = self._params.num_of_paths
         rnd_num = self.generate_std_norm(num_of_tenors)
         spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
-        spot = model.get_spot()
+        spot = model.spot
         vol = model.get_vol(self._contract.strike, self._contract.expiry)
         for path in range(num_of_paths):
             spot_paths[path, 0] = spot
@@ -109,7 +109,7 @@ class SimpleBinomialTree(NumericalMethod):
         self._down_log_step = np.log(self._params.down_step_mult)
         self._up_log_step = np.log(self._params.up_step_mult)
         tree = []
-        log_spot = np.log(self._model.get_spot())
+        log_spot = np.log(self._model.spot)
         previous_level = [log_spot]
         tree += [previous_level]
         for _ in range(self._params.nr_steps):
@@ -124,7 +124,7 @@ class SimpleBinomialTree(NumericalMethod):
         if self._df_computed:
             pass
         delta_t = self._contract.expiry / self._params.nr_steps
-        df_1_step = self._model.get_df(delta_t)
+        df_1_step = self._model.calc_df(delta_t)
         self._df = [df_1_step ** k for k in range(self._params.nr_steps + 1)]
         self._df_computed = True
 
@@ -144,12 +144,12 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         up = BalancedSimpleBinomialTree.calc_up_step_mult(
-            model.get_rate(),
+            model.risk_free_rate,
             model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
             contract.expiry)
         down = BalancedSimpleBinomialTree.calc_down_step_mult(
-            model.get_rate(),
+            model.risk_free_rate,
             model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
             contract.expiry)
@@ -216,16 +216,16 @@ class BlackScholesPDE(PDEMethod):
         self.time_step = params.time_step
         self.und_step = params.und_step
         self.derivative_type = contract.derivative_type
-        self.stock_min = params.stock_min_mult * model.get_spot()
-        self.stock_max = params.stock_max_mult * model.get_spot()
+        self.stock_min = params.stock_min_mult * model.spot
+        self.stock_max = params.stock_max_mult * model.spot
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
         self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
-        self.interest_rate = model.get_rate()
+        self.interest_rate = model.risk_free_rate
         self.grid = np.zeros((self.num_of_und_steps + 1, self.num_of_time_steps + 1))
         self.stock_disc = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
         self.time_disc = np.linspace(0, self.exp, self.num_of_time_steps + 1)
         self.measure_of_stock = self.stock_disc / self.und_step
-        self.df = model.get_df(self.exp - self.time_disc)
+        self.df = model.calc_df(self.exp - self.time_disc)
 
     def setup_boundary_conditions(self):
         if self.derivative_type == PutCallFwd.CALL:

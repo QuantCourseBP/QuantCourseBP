@@ -55,12 +55,12 @@ class EuropeanAnalyticPricer(Pricer):
 
     def calc_delta(self) -> float:
         greek = 0.0
-        spot = self._model.get_spot()
+        spot = self._model.spot
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
         vol = self._model.get_vol()
-        rate = self._model.get_rate()
+        rate = self._model.risk_free_rate
         d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type == PutCallFwd.CALL:
             greek = norm.cdf(d1)
@@ -72,12 +72,12 @@ class EuropeanAnalyticPricer(Pricer):
 
     def calc_gamma(self) -> float:
         greek = 0.0
-        spot = self._model.get_spot()
+        spot = self._model.spot
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
         vol = self._model.get_vol()
-        rate = self._model.get_rate()
+        rate = self._model.risk_free_rate
         d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type in (PutCallFwd.CALL, PutCallFwd.PUT):
             greek = norm.pdf(d1) / (spot * vol * np.sqrt(time_to_expiry))
@@ -87,13 +87,13 @@ class EuropeanAnalyticPricer(Pricer):
 
     def calc_vega(self) -> float:
         greek = 0.0
-        spot = self._model.get_spot()
+        spot = self._model.spot
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
         vol = self._model.get_vol()
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
         d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type in (PutCallFwd.CALL, PutCallFwd.PUT):
             greek = strike * df * norm.pdf(d2) * np.sqrt(time_to_expiry)
@@ -104,12 +104,12 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_theta(self) -> float:
         greek = 0.0
         strike = self._contract.strike
-        spot = self._model.get_spot()
+        spot = self._model.spot
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
         vol = self._model.get_vol()
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
         d1 = EuropeanAnalyticPricer.d1(spot, strike, vol, rate, time_to_expiry)
         d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type == PutCallFwd.CALL:
@@ -127,10 +127,10 @@ class EuropeanAnalyticPricer(Pricer):
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
-        spot = self._model.get_spot()
+        spot = self._model.spot
         vol = self._model.get_vol()
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
         d2 = EuropeanAnalyticPricer.d2(spot, strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type == PutCallFwd.CALL:
             greek = strike * time_to_expiry * df * norm.cdf(d2)

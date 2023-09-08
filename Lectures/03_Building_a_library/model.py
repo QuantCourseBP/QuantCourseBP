@@ -7,7 +7,7 @@ import numpy as np
 # TASK:
 # Implement __init__() method for MarketModel class. Take an underlying as input.
 # Store market data (risk-free rate, spot, volatility) of the given underlying.
-# Implement get_df() method which takes a tenor and returns the corresponding discount factor.
+# Implement calc_df() method which takes a tenor and returns the corresponding discount factor.
 
 
 class MarketModel:

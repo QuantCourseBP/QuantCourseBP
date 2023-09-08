@@ -10,7 +10,7 @@ class MarketModel(ABC):
         self._und: Stock = und
         self._interest_rate: float = MarketData.get_risk_free_rate()
         self._spot: float = MarketData.get_spot()[und]
-        self._volgrid: VolGrid = MarketData.get_vol_grid()[und]
+        self._volgrid: VolGrid = MarketData.get_volgrid()[und]
 
     def get_rate(self) -> float:
         return self._interest_rate

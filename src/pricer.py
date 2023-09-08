@@ -31,7 +31,7 @@ class Pricer(ABC):
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.spot
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -45,7 +45,7 @@ class Pricer(ABC):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.spot
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -86,7 +86,7 @@ class Pricer(ABC):
     def calc_rho(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_rate()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.risk_free_rate
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -125,10 +125,10 @@ class ForwardAnalyticPricer(Pricer):
 
     def calc_fair_value(self) -> float:
         direction = self._contract.direction
-        spot = self._model.get_spot()
+        spot = self._model.spot
         strike = self._contract.strike
         time_to_expiry = self._contract.expiry - self._get_valuation_time()
-        df = self._model.get_df(time_to_expiry)
+        df = self._model.calc_df(time_to_expiry)
         if self._contract.derivative_type == PutCallFwd.FWD:
             return direction * (spot - strike * df)
         else:
@@ -163,8 +163,8 @@ class ForwardAnalyticPricer(Pricer):
             greek = 0.0
             strike = self._contract.strike
             time_to_expiry = self._contract.expiry - self._get_valuation_time()
-            rate = self._model.get_rate()
-            df = self._model.get_df(time_to_expiry)
+            rate = self._model.risk_free_rate
+            df = self._model.calc_df(time_to_expiry)
             if self._contract.derivative_type == PutCallFwd.FWD:
                 greek = -1.0 * strike * df * rate
             else:
@@ -180,7 +180,7 @@ class ForwardAnalyticPricer(Pricer):
             greek = 0.0
             strike = self._contract.strike
             time_to_expiry = self._contract.expiry - self._get_valuation_time()
-            df = self._model.get_df(time_to_expiry)
+            df = self._model.calc_df(time_to_expiry)
             if self._contract.derivative_type == PutCallFwd.FWD:
                 greek = strike * df * time_to_expiry
             else:
@@ -212,10 +212,10 @@ class EuropeanAnalyticPricer(Pricer):
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
-        spot = self._model.get_spot()
+        spot = self._model.spot
         vol = self._model.get_vol(strike, expiry)
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
         d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
         d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
         if self._contract.derivative_type == PutCallFwd.CALL:
@@ -228,12 +228,12 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_delta(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_spot()
+            spot = self._model.spot
             strike = self._contract.strike
             expiry = self._contract.expiry
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
-            rate = self._model.get_rate()
+            rate = self._model.risk_free_rate
             d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
             if self._contract.derivative_type == PutCallFwd.CALL:
                 greek = norm.cdf(d1)
@@ -250,12 +250,12 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_spot()
+            spot = self._model.spot
             strike = self._contract.strike
             expiry = self._contract.expiry
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
-            rate = self._model.get_rate()
+            rate = self._model.risk_free_rate
             d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
             if self._contract.derivative_type in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = norm.pdf(d1) / (spot * vol * np.sqrt(time_to_expiry))
@@ -270,13 +270,13 @@ class EuropeanAnalyticPricer(Pricer):
     def calc_vega(self, method: GreekMethod) -> float:
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
-            spot = self._model.get_spot()
+            spot = self._model.spot
             strike = self._contract.strike
             expiry = self._contract.expiry
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
-            rate = self._model.get_rate()
-            df = self._model.get_df(time_to_expiry)
+            rate = self._model.risk_free_rate
+            df = self._model.calc_df(time_to_expiry)
             d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.derivative_type in (PutCallFwd.CALL, PutCallFwd.PUT):
                 greek = strike * df * norm.pdf(d2) * np.sqrt(time_to_expiry)
@@ -292,12 +292,12 @@ class EuropeanAnalyticPricer(Pricer):
         if method == GreekMethod.ANALYTIC:
             greek = 0.0
             strike = self._contract.strike
-            spot = self._model.get_spot()
+            spot = self._model.spot
             expiry = self._contract.expiry
             time_to_expiry = expiry - self._get_valuation_time()
             vol = self._model.get_vol(strike, expiry)
-            rate = self._model.get_rate()
-            df = self._model.get_df(time_to_expiry)
+            rate = self._model.risk_free_rate
+            df = self._model.calc_df(time_to_expiry)
             d1 = EuropeanAnalyticPricer.d1(spot/strike, vol, rate, time_to_expiry)
             d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.derivative_type == PutCallFwd.CALL:
@@ -320,10 +320,10 @@ class EuropeanAnalyticPricer(Pricer):
             strike = self._contract.strike
             expiry = self._contract.expiry
             time_to_expiry = expiry - self._get_valuation_time()
-            spot = self._model.get_spot()
+            spot = self._model.spot
             vol = self._model.get_vol(strike, expiry)
-            rate = self._model.get_rate()
-            df = self._model.get_df(time_to_expiry)
+            rate = self._model.risk_free_rate
+            df = self._model.calc_df(time_to_expiry)
             d2 = EuropeanAnalyticPricer.d2(spot/strike, vol, rate, time_to_expiry)
             if self._contract.derivative_type == PutCallFwd.CALL:
                 greek = strike * time_to_expiry * df * norm.cdf(d2)
@@ -378,9 +378,9 @@ class EuropeanPDEPricer(Pricer):
         self._derivative_type = contract.derivative_type
         self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
-        self._initial_spot = model.get_spot()
+        self._initial_spot = model.spot
         self._strike = contract.strike
-        self._interest_rate = model.get_rate()
+        self._interest_rate = model.risk_free_rate
         self.t_step = params.time_step
         self.und_step = params.und_step
         self.time_step = params.time_step
@@ -431,9 +431,9 @@ class GenericMCPricer(Pricer):
         if self.params.control_variate:
             # adjust path_payoff inplace
             self.apply_control_var_adj(path_payoff, spot_paths)
-        fv = mean(path_payoff) * self._model.get_df(maturity)
+        fv = mean(path_payoff) * self._model.calc_df(maturity)
         fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
-                      * self._model.get_df(maturity) for mult in [-1, 1]]
+                      * self._model.calc_df(maturity) for mult in [-1, 1]]
         return fv, fv_contint
 
     def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
@@ -447,7 +447,7 @@ class GenericMCPricer(Pricer):
             path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
         cov = np.cov(path_payoff, path_payoff_cv)
         b = cov[0][1]/cov[1][1]
-        contract_cv_mean = pricer_cv.calc_fair_value() / self._model.get_df(contract_cv.expiry)
+        contract_cv_mean = pricer_cv.calc_fair_value() / self._model.calc_df(contract_cv.expiry)
         for i in range(num_of_path):
             path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
 
@@ -473,10 +473,10 @@ class AsianMomentmatchingPricer(Pricer):
         expiry = self._contract.expiry
         timeline = self._contract.get_timeline()
         time_to_expiry = expiry - self._get_valuation_time()
-        spot = self._model.get_spot()
+        spot = self._model.spot
         vol = self._model.get_vol(strike, expiry)
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
 
         n = len(timeline)
         moment_first = spot / n * sum([np.exp(rate*t_i) for t_i in timeline])
@@ -506,10 +506,10 @@ class BarrierAnalyticPricer(Pricer):
         strike = self._contract.strike
         expiry = self._contract.expiry
         time_to_expiry = expiry - self._get_valuation_time()
-        spot = self._model.get_spot()
+        spot = self._model.spot
         vol = self._model.get_vol(strike, expiry)
-        rate = self._model.get_rate()
-        df = self._model.get_df(time_to_expiry)
+        rate = self._model.risk_free_rate
+        df = self._model.calc_df(time_to_expiry)
         barrier = self._contract.barrier.barrier_level
         updown = self._contract.barrier.up_down
         inout = self._contract.barrier.in_out
