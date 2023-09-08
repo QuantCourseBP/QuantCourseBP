@@ -99,25 +99,24 @@ class BlackScholesPDE(NumericalMethod):
         self.stock_disc: np.ndarray = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
         self.time_disc: np.ndarray = np.linspace(0, self.contract.expiry, self.num_of_time_steps + 1)
         self.measure_of_stock: np.ndarray = self.stock_disc / self.params.und_step
+        self.setup_boundary_conditions()
 
-    def setup_boundary_conditions(self):
+    def setup_boundary_conditions(self) -> None:
         df = self.model.calc_df(self.contract.expiry - self.time_disc)
         if self.contract.derivative_type == PutCallFwd.CALL:
             # terminal condition
             self.grid[:, -1] = np.maximum(self.stock_disc - self.contract.strike, 0)
             # right boundary
             self.grid[-1, :] = self.stock_max - self.contract.strike * df
-
         elif self.contract.derivative_type == PutCallFwd.PUT:
             # terminal condition
             self.grid[:, -1] = np.maximum(self.contract.strike - self.stock_disc, 0)
             # left condition
             self.grid[0, :] = self.contract.strike * df - self.stock_min
-
         else:
             self.contract.raise_incorrect_derivative_type_error()
 
-    def explicit_method(self):
+    def explicit_method(self) -> None:
         self.setup_boundary_conditions()
         alpha = 0.5 * self.params.time_step * (
                 self.sigma ** 2 * self.measure_of_stock ** 2 - self.model.risk_free_rate * self.measure_of_stock)
@@ -130,7 +129,7 @@ class BlackScholesPDE(NumericalMethod):
                 self.grid[i, j] = alpha[i] * self.grid[i - 1, j + 1] + beta[i] * self.grid[i, j + 1] + gamma[i] \
                                               * self.grid[i + 1, j + 1]
 
-    def implicit_method(self):
+    def implicit_method(self) -> None:
         self.setup_boundary_conditions()
         alpha = 0.5 * self.params.time_step * (
                 self.model.risk_free_rate * self.measure_of_stock - self.sigma ** 2 * self.measure_of_stock ** 2)
@@ -148,7 +147,7 @@ class BlackScholesPDE(NumericalMethod):
             self.grid[1:-1, j] = np.linalg.solve(
                 lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1] + rhs_vector))
 
-    def crank_nicolson_method(self):
+    def crank_nicolson_method(self) -> None:
         self.setup_boundary_conditions()
         alpha = 0.25 * self.params.time_step * (
                 -self.model.risk_free_rate * self.measure_of_stock + self.sigma ** 2 * self.measure_of_stock ** 2)
@@ -182,12 +181,12 @@ class SimpleBinomialTree(NumericalMethod):
         self.df: list[float] = list()
         self.prob: tuple[float, float] = tuple()
 
-    def init_tree(self):
+    def init_tree(self) -> None:
         self.build_spot_tree()
         self.compute_df()
         self.compute_prob()
 
-    def build_spot_tree(self):
+    def build_spot_tree(self) -> None:
         if self.spot_tree_built:
             return
         log_spot = np.log(self.model.spot)
@@ -201,7 +200,7 @@ class SimpleBinomialTree(NumericalMethod):
         self.spot_tree = tree
         self.spot_tree_built = True
 
-    def compute_df(self):
+    def compute_df(self) -> None:
         if self.df_computed:
             return
         delta_t = self.contract.expiry / self.params.nr_steps
@@ -209,7 +208,7 @@ class SimpleBinomialTree(NumericalMethod):
         self.df = [df_1_step ** k for k in range(self.params.nr_steps + 1)]
         self.df_computed = True
 
-    def compute_prob(self):
+    def compute_prob(self) -> None:
         if self.prob_computed:
             return
         if not self.df_computed:
@@ -262,8 +261,8 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: float = 0, stock_max_mult: float = 2,
-                 method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: float = 0,
+                 stock_max_mult: float = 2, method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
         self.stock_min_mult = stock_min_mult
