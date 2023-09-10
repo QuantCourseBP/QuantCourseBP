@@ -7,7 +7,7 @@ from scipy.interpolate import Akima1DInterpolator
 
 def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50)) -> None:
     fig, ax = plt.subplots(subplot_kw={'projection': '3d'})
-    points = volgrid.get_points().T
+    points = volgrid.points.T
     strike_range = (min(points[0]), max(points[0]))
     expiry_range = (min(points[1]), max(points[1]))
     strike = np.linspace(strike_range[0], strike_range[1], num_steps)
@@ -19,7 +19,7 @@ def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50
     if show_obs:
         strike = points[0]
         expiry = points[1]
-        vols = volgrid.get_values()
+        vols = volgrid.values
         ax.scatter3D(strike, expiry, vols, s=10, color='black')
     ax.set_xlabel('Strike', fontweight='bold')
     ax.set_ylabel('Expiry', fontweight='bold')
@@ -32,10 +32,10 @@ def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50
 
 def plot_vol_slice(volgrid: VolGrid, expiry: float, linear_interpolation: bool = False):
     fig, ax = plt.subplots()
-    points = volgrid.get_points().T
+    points = volgrid.points.T
     all_strike = points[0]
     all_expiry = points[1]
-    all_vol = volgrid.get_values()
+    all_vol = volgrid.values
     mask = np.isclose(all_expiry, expiry)
     if all(~mask):
         tenors = sorted(list(np.unique(all_expiry)))

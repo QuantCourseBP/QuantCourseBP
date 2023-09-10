@@ -54,22 +54,22 @@ class BlackScholesPDE(PDEMethod):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
         self.contract = contract
-        self.exp = contract.get_expiry()
-        self.strike = contract.get_strike()
-        self.sigma = model.get_vol(contract.get_strike(), contract.get_expiry())
+        self.exp = contract.expiry
+        self.strike = contract.strike
+        self.sigma = model.get_vol(contract.strike, contract.expiry)
         self.time_step = params.time_step
         self.und_step = params.und_step
-        self.derivative_type = contract.get_type()
-        self.stock_min = params.stock_min_mult * model.get_spot()
-        self.stock_max = params.stock_max_mult * model.get_spot()
+        self.derivative_type = contract.derivative_type
+        self.stock_min = params.stock_min_mult * model.spot
+        self.stock_max = params.stock_max_mult * model.spot
         self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
         self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
-        self.interest_rate = model.get_rate()
+        self.interest_rate = model.risk_free_rate
         self.grid = np.zeros((self.num_of_und_steps + 1, self.num_of_time_steps + 1))
         self.stock_disc = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
         self.time_disc = np.linspace(0, self.exp, self.num_of_time_steps + 1)
         self.measure_of_stock = self.stock_disc / self.und_step
-        self.df = model.get_df(self.exp - self.time_disc)
+        self.df = model.calc_df(self.exp - self.time_disc)
 
     def setup_boundary_conditions(self):
         pass

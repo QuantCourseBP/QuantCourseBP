@@ -10,7 +10,7 @@ class MarketModel(ABC):
         self._und: Stock = und
         self._interest_rate: float = MarketData.get_risk_free_rate()
         self._spot: float = MarketData.get_spot()[und]
-        self._volgrid: VolGrid = MarketData.get_vol_grid()[und]
+        self._volgrid: VolGrid = MarketData.get_volgrid()[und]
 
     def get_rate(self) -> float:
         return self._interest_rate
@@ -25,9 +25,7 @@ class MarketModel(ABC):
         self._spot += bump_size
 
     def bump_volgrid(self, bump_size: float) -> None:
-        values = self._volgrid.get_values()
-        values += bump_size
-        self._volgrid = VolGrid(self._volgrid.get_underlying(), self._volgrid.get_points(), values)
+        self._volgrid.values += bump_size
 
     @abstractmethod
     def get_vol(self, strike: float, expiry: float) -> float:

@@ -29,7 +29,7 @@ class Pricer(ABC):
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.spot
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -43,7 +43,7 @@ class Pricer(ABC):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_spot()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.spot
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -57,8 +57,8 @@ class Pricer(ABC):
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        strike = self._contract.get_strike()
-        expiry = self._contract.get_expiry()
+        strike = self._contract.strike
+        expiry = self._contract.expiry
         vol = self._model.get_vol(strike, expiry)
         bump_size = self.RELATIVE_BUMP_SIZE * vol
         bumped_fair_values = list()
@@ -84,7 +84,7 @@ class Pricer(ABC):
     def calc_rho(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self._raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.RELATIVE_BUMP_SIZE * self._model.get_rate()
+        bump_size = self.RELATIVE_BUMP_SIZE * self._model.risk_free_rate
         bumped_fair_values = list()
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self._model)
@@ -112,10 +112,10 @@ class EuropeanPDEPricer(Pricer):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
         if not isinstance(params, PDEParams):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
-        self._derivative_type = contract.get_type()
+        self._derivative_type = contract.derivative_type
         self._bsPDE = BlackScholesPDE(contract, model, params)
         self.grid = self._bsPDE.grid
-        self._initial_spot = model.get_spot()
+        self._initial_spot = model.spot
         self.und_step = params.und_step
         self.time_step = params.time_step
         self.stock_min = self._bsPDE.stock_min
@@ -129,7 +129,7 @@ class EuropeanPDEPricer(Pricer):
         #
         # elif self.method == BSPDEMethod.IMPLICIT:
         #
-        # elif self.method == BSPDEMethod.CRANKNICOLSON:
+        # elif self.method == BSPDEMethod.CRANK_NICOLSON:
         #
         # else:
         #     raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
@@ -143,6 +143,3 @@ class EuropeanPDEPricer(Pricer):
         else:
             return self.grid[down, 0] + (self.grid[up, 0] - self.grid[down, 0]) * \
                    (self._initial_spot - self.stock_min - down*self.und_step)/self.und_step
-
-
-
