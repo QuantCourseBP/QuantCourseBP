@@ -1,8 +1,8 @@
-numpy
-pandas
-pytest
-scipy
-matplotlib
+numpy==1.26.0
+pandas==2.1.0
+pytest==7.4.2
+scipy==1.11.2
+matplotlib==3.8.0
 notebook==6.5.5
 traitlets==5.9.0
-rise
+rise==5.7.1
