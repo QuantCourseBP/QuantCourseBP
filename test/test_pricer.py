@@ -139,3 +139,19 @@ class TestPutCallParity:
         result_put_call = {key: result['call'].get(key, 0) + result['put'].get(key, 0)
                            for key in set(result['call']) | set(result['put'])}
         assert result_put_call == pytest.approx(result['fwd'], abs=1e-6)
+
+
+class TestEuropeanPDEPricer:
+    und = Stock.TEST_COMPANY
+    expiry = 2.0
+    strike = 0.95 * MarketData.get_spot()[und]
+    model = FlatVolModel(und)
+    params = [PDEParams(method=BSPDEMethod.EXPLICIT), PDEParams(method=BSPDEMethod.IMPLICIT), PDEParams(method=BSPDEMethod.CRANK_NICOLSON)]
+    contract = EuropeanContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry)
+    pvs = [19.559315913934707, 19.557755216197634, 19.558594355475716]
+
+    @pytest.mark.parametrize('param, expected_pv', zip(params, pvs))
+    def test_tree_pricer(self, param, expected_pv):
+        pricer = EuropeanPDEPricer(self.contract, self.model, param)
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(expected_pv)

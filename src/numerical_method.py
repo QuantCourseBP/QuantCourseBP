@@ -7,10 +7,10 @@ from src.contract import Contract, EuropeanContract
 
 class NumericalMethod(ABC):
     @abstractmethod
-    def __init__(self, contract: Contract, model: MarketModel, params: MCParams | PDEParams | TreeParams):
-        self._contract = contract
-        self._model = model
-        self._params = params
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams | PDEParams | TreeParams) -> None:
+        self.contract: Contract = contract
+        self.model: MarketModel = model
+        self.params: MCParams | PDEParams | TreeParams = params
 
     @staticmethod
     def get_numerical_methods() -> dict[str, NumericalMethod]:
@@ -18,143 +18,230 @@ class NumericalMethod(ABC):
 
 
 class MCMethod(NumericalMethod):
-    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+    def __init__(self, contract: Contract, model: MarketModel, params: MCParams) -> None:
         if not isinstance(params, MCParams):
             raise TypeError(f'Params must be of type MCParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
 
     def find_simulation_tenors(self) -> list[float]:
-        final_tenor = max(self._contract.get_timeline())
-        dt = 1 / self._params.tenor_frequency
-        num_of_tenors = int(final_tenor / dt)
-        model_tenors = [i * dt for i in range(num_of_tenors)]
-        all_simul_tenors = sorted(set(model_tenors + self._contract.get_timeline()))
-        return all_simul_tenors
+        if self.params.tenor_frequency == 0:
+            model_tenors = [.0]
+        else:
+            final_tenor = max(self.contract.get_timeline())
+            dt = 1 / self.params.tenor_frequency
+            num_of_tenors = int(final_tenor / dt)
+            model_tenors = [i * dt for i in range(num_of_tenors)]
+        return sorted(set(model_tenors + self.contract.get_timeline()))
 
     def generate_std_norm(self, num_of_tenors: int) -> np.ndarray:
-        np.random.seed(self._params.seed)
-        if self._params.antithetic:
-            rnd1 = np.random.standard_normal(size=(int(self._params.num_of_paths / 2), num_of_tenors))
+        np.random.seed(self.params.seed)
+        if self.params.antithetic:
+            rnd1 = np.random.standard_normal(size=(int(self.params.num_of_paths / 2), num_of_tenors))
             rnd2 = -rnd1
             rnd = np.concatenate((rnd1, rnd2), axis=0)
-            if self._params.num_of_paths % 2 == 1:
-                zeros = np.zeros((1, self._params.num_of_tenors))
+            if self.params.num_of_paths % 2 == 1:
+                zeros = np.zeros((1, num_of_tenors))
                 rnd = np.concatenate((rnd, zeros), axis=0)
         else:
-            rnd = np.random.standard_normal(size=(self._params.num_of_paths, self._params.num_of_tenors))
-        if self._params.standardize:
+            rnd = np.random.standard_normal(size=(self.params.num_of_paths, num_of_tenors))
+        if self.params.standardize:
             mean = np.mean(rnd)
-            std = np.std(rnd)
+            std = np.std(rnd, ddof=1)
             rnd = (rnd - mean) / std
         return rnd
 
+    @abstractmethod
     def simulate_spot_paths(self) -> np.ndarray:
-        model = self._model
-        contract_tenors = self._contract.get_timeline()
+        pass
+
+
+class MCMethodFlatVol(MCMethod):
+    def __int__(self, contract: Contract, model: FlatVolModel, params: MCParams):
+        super().__init__(contract, model, params)
+
+    def simulate_spot_paths(self) -> np.ndarray:
+        contract_tenors = self.contract.get_timeline()
         simulation_tenors = self.find_simulation_tenors()
         num_of_tenors = len(simulation_tenors)
-        num_of_paths = self._params.num_of_paths
+        num_of_paths = self.params.num_of_paths
         rnd_num = self.generate_std_norm(num_of_tenors)
         spot_paths = np.empty(shape=(num_of_paths, num_of_tenors))
-        spot = model.get_spot()
-        vol = model.get_vol(self._contract.get_strike(), self._contract.get_expiry())
+        spot = self.model.spot
+        vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         for path in range(num_of_paths):
-            for t_idx in range(num_of_tenors):
+            spot_paths[path, 0] = spot
+            for t_idx in range(1, num_of_tenors):
                 t_from = simulation_tenors[t_idx - 1]
                 t_to = simulation_tenors[t_idx]
-                spot_from = spot if t_idx == 0 else spot_paths[path, t_idx - 1]
+                spot_from = spot_paths[path, t_idx - 1]
                 z = rnd_num[path, t_idx]
-                spot_paths[path, t_idx] = model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
+                spot_paths[path, t_idx] = self.model.evolve_simulated_spot(vol, t_from, t_to, spot_from, z)
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if simulation_tenors[idx] in contract_tenors]
         return spot_paths[:, contract_tenor_idx]
 
 
-# todo: to be implemented
-class PDEMethod(NumericalMethod):
-    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+class BlackScholesPDE(NumericalMethod):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams) -> None:
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
         if not isinstance(params, PDEParams):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
+        self.contract: EuropeanContract = contract
+        self.sigma: float = self.model.get_vol(self.contract.strike, self.contract.expiry)
+        self.stock_min: float = self.params.stock_min_mult * self.model.spot
+        self.stock_max: float = self.params.stock_max_mult * self.model.spot
+        # Number of stock price steps
+        self.num_of_und_steps: int = int(np.round((self.stock_max - self.stock_min) / float(self.params.und_step)))
+        # Number of time steps
+        self.num_of_time_steps: int = int(np.round(self.contract.expiry / float(self.params.time_step)))
+        self.grid: np.ndarray = np.zeros((self.num_of_und_steps + 1, self.num_of_time_steps + 1))
+        self.stock_disc: np.ndarray = np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1)
+        self.time_disc: np.ndarray = np.linspace(0, self.contract.expiry, self.num_of_time_steps + 1)
+        self.measure_of_stock: np.ndarray = self.stock_disc / self.params.und_step
+        self.setup_boundary_conditions()
+
+    def setup_boundary_conditions(self) -> None:
+        df = self.model.calc_df(self.contract.expiry - self.time_disc)
+        if self.contract.derivative_type == PutCallFwd.CALL:
+            # terminal condition
+            self.grid[:, -1] = np.maximum(self.stock_disc - self.contract.strike, 0)
+            # right boundary
+            self.grid[-1, :] = self.stock_max - self.contract.strike * df
+        elif self.contract.derivative_type == PutCallFwd.PUT:
+            # terminal condition
+            self.grid[:, -1] = np.maximum(self.contract.strike - self.stock_disc, 0)
+            # left condition
+            self.grid[0, :] = self.contract.strike * df - self.stock_min
+        else:
+            self.contract.raise_incorrect_derivative_type_error()
+
+    def explicit_method(self) -> None:
+        self.setup_boundary_conditions()
+        alpha = 0.5 * self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 - self.model.risk_free_rate * self.measure_of_stock)
+        beta = 1 - self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate)
+        gamma = 0.5 * self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate * self.measure_of_stock)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            for i in range(1, self.num_of_und_steps):  # for S
+                self.grid[i, j] = alpha[i] * self.grid[i - 1, j + 1] + beta[i] * self.grid[i, j + 1] + gamma[i] \
+                                              * self.grid[i + 1, j + 1]
+
+    def implicit_method(self) -> None:
+        self.setup_boundary_conditions()
+        alpha = 0.5 * self.params.time_step * (
+                self.model.risk_free_rate * self.measure_of_stock - self.sigma ** 2 * self.measure_of_stock ** 2)
+        beta = 1 + self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate)
+        gamma = - 0.5 * self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate * self.measure_of_stock)
+        upper_matrix = np.diag(alpha[2:-1], -1) + np.diag(beta[1:-1]) + np.diag(gamma[1:-2], 1)
+        lower_matrix = np.eye(self.num_of_und_steps - 1)
+
+        rhs_vector = np.zeros(self.num_of_und_steps-1)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            rhs_vector[0] = -alpha[1] * self.grid[0, j+1]
+            rhs_vector[-1] = -gamma[-2] * self.grid[-1, j+1]
+            self.grid[1:-1, j] = np.linalg.solve(
+                lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1] + rhs_vector))
+
+    def crank_nicolson_method(self) -> None:
+        self.setup_boundary_conditions()
+        alpha = 0.25 * self.params.time_step * (
+                -self.model.risk_free_rate * self.measure_of_stock + self.sigma ** 2 * self.measure_of_stock ** 2)
+        beta = -0.5 * self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate)
+        gamma = 0.25 * self.params.time_step * (
+                self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate * self.measure_of_stock)
+        upper_matrix = -np.diag(alpha[2:-1], -1) + np.diag(1-beta[1:-1]) - np.diag(gamma[1:-2], 1)
+        lower_matrix = np.eye(self.num_of_und_steps - 1)
+        rhs_matrix = np.diag(alpha[2:-1], -1) + np.diag(1+beta[1:-1]) + np.diag(gamma[1:-2], 1)
+
+        rhs_vector = np.zeros(self.num_of_und_steps - 1)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            rhs_vector[0] = alpha[1] * (self.grid[0, j + 1] + self.grid[0, j])
+            rhs_vector[-1] = gamma[-2] * (self.grid[-1, j + 1] + self.grid[-1, j])
+            self.grid[1:-1, j] = np.linalg.solve(
+                lower_matrix, np.linalg.solve(upper_matrix, (rhs_matrix @ self.grid[1:-1, j + 1]) + rhs_vector))
 
 
 class SimpleBinomialTree(NumericalMethod):
-    def __init__(self, contract: Contract, model: MarketModel, params: Params):
+    def __init__(self, contract: Contract, model: MarketModel, params: Params) -> None:
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
-        self._spot_tree_built = False
-        self._df_computed = False
-        self._prob_computed = False
+        self.spot_tree_built: bool = False
+        self.df_computed: bool = False
+        self.prob_computed: bool = False
+        self.down_log_step = np.log(self.params.down_step_mult)
+        self.up_log_step = np.log(self.params.up_step_mult)
+        self.spot_tree: list[list[float]] = list()
+        self.df: list[float] = list()
+        self.prob: tuple[float, float] = tuple()
 
-    def init_tree(self):
+    def init_tree(self) -> None:
         self.build_spot_tree()
         self.compute_df()
         self.compute_prob()
 
-    def build_spot_tree(self):
-        if self._spot_tree_built:
-            pass
-        self._down_log_step = np.log(self._params.down_step_mult)
-        self._up_log_step = np.log(self._params.up_step_mult)
-        tree = []
-        log_spot = np.log(self._model.get_spot())
+    def build_spot_tree(self) -> None:
+        if self.spot_tree_built:
+            return
+        log_spot = np.log(self.model.spot)
         previous_level = [log_spot]
-        tree += [previous_level]
-        for _ in range(self._params.nr_steps):
-            new_level = [s + self._down_log_step for s in previous_level]
-            new_level += [previous_level[-1] + self._up_log_step]
+        tree = [previous_level]
+        for _ in range(self.params.nr_steps):
+            new_level = [s + self.down_log_step for s in previous_level]
+            new_level += [previous_level[-1] + self.up_log_step]
             tree += [new_level]
             previous_level = new_level
-        self._spot_tree = tree
-        self._spot_tree_built = True
+        self.spot_tree = tree
+        self.spot_tree_built = True
 
-    def compute_df(self):
-        if self._df_computed:
-            pass
-        delta_t = self._contract.get_expiry() / self._params.nr_steps
-        df_1_step = self._model.get_df(delta_t)
-        self._df = [df_1_step ** k for k in range(self._params.nr_steps + 1)]
-        self._df_computed = True
+    def compute_df(self) -> None:
+        if self.df_computed:
+            return
+        delta_t = self.contract.expiry / self.params.nr_steps
+        df_1_step = self.model.calc_df(delta_t)
+        self.df = [df_1_step ** k for k in range(self.params.nr_steps + 1)]
+        self.df_computed = True
 
-    def compute_prob(self):
-        if self._prob_computed:
-            pass
-        if not self._df_computed:
-            self._compute_df()
-        p = (1 / self._df[1] - np.exp(self._down_log_step)) / (np.exp(self._up_log_step) - np.exp(self._down_log_step))
-        q = 1 - p
-        self._prob = (p, q)
-        self._prob_computed = True
+    def compute_prob(self) -> None:
+        if self.prob_computed:
+            return
+        if not self.df_computed:
+            self.compute_df()
+        p = (1 / self.df[1] - np.exp(self.down_log_step)) / (np.exp(self.up_log_step) - np.exp(self.down_log_step))
+        self.prob = (p, 1-p)
+        self.prob_computed = True
 
 
 class BalancedSimpleBinomialTree(SimpleBinomialTree):
     def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
-        up = BalancedSimpleBinomialTree.calc_up_step_mult(
-            model.get_rate(),
-            model.get_vol(contract.get_strike(), contract.get_expiry()),
+        up = BalancedSimpleBinomialTree.calc_step_mult(
+            model.risk_free_rate,
+            model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
-            contract.get_expiry())
-        down = BalancedSimpleBinomialTree.calc_down_step_mult(
-            model.get_rate(),
-            model.get_vol(contract.get_strike(), contract.get_expiry()),
+            contract.expiry,
+            True)
+        down = BalancedSimpleBinomialTree.calc_step_mult(
+            model.risk_free_rate,
+            model.get_vol(contract.strike, contract.expiry),
             params.nr_steps,
-            contract.get_expiry())
-        p = TreeParams(params.nr_steps, up, down)
-        super().__init__(contract, model, p)
+            contract.expiry,
+            False)
+        super().__init__(contract, model, TreeParams(params.nr_steps, up, down))
 
     @staticmethod
-    def calc_up_step_mult(rate: float, vol: float, nr_steps: int, exp: float) -> float:
+    def calc_step_mult(rate: float, vol: float, nr_steps: int, exp: float, is_up_direction: bool) -> float:
+        direction = 1.0 if is_up_direction else -1.0
         delta_t = exp / nr_steps
         log_mean = rate * delta_t - 0.5 * vol ** 2 * delta_t
-        return np.exp(log_mean + vol * np.sqrt(delta_t))
-
-    @staticmethod
-    def calc_down_step_mult(rate: float, vol: float, nr_steps: int, exp: float) -> float:
-        delta_t = exp / nr_steps
-        log_mean = rate * delta_t - 0.5 * vol ** 2 * delta_t
-        return np.exp(log_mean - vol * np.sqrt(delta_t))
+        return np.exp(log_mean + direction * vol * np.sqrt(delta_t))
 
 
 class Params(ABC):
@@ -163,20 +250,23 @@ class Params(ABC):
 
 
 class MCParams(Params):
-    def __init__(self) -> None:
-        # todo: to be implemented, a few examples:
-        self.seed: int = 0
-        self.num_of_paths: int = 100
-        self.timestep: int = 10
+    def __init__(self, seed: int = 1, num_of_path: int = 10000, tenor_frequency: int = 12,
+                 standardize: bool = True, antithetic: bool = True, control_variate: bool = False) -> None:
+        self.seed = seed
+        self.num_of_paths = num_of_path
+        self.tenor_frequency = tenor_frequency
+        self.standardize = standardize
+        self.antithetic = antithetic
+        self.control_variate = control_variate
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int, time_step: int, stock_min: int, stock_max: int, method: str) -> None:
-        # todo: to be implemented
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: float = 0,
+                 stock_max_mult: float = 2, method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
-        self.stock_min = stock_min
-        self.stock_max = stock_max
+        self.stock_min_mult = stock_min_mult
+        self.stock_max_mult = stock_max_mult
         self.method = method
 
 
@@ -185,72 +275,3 @@ class TreeParams(Params):
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
-
-
-class BlackScholesPDE(PDEMethod):
-    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
-        if not isinstance(contract, EuropeanContract):
-            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
-        if not isinstance(params, PDEParams):
-            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
-        super().__init__(contract, model, params)
-        self.contract = contract
-        self.exp = contract.get_expiry()
-        self.strike = contract.get_strike()
-        self.sigma = model.get_vol(contract.get_strike(), contract.get_expiry())
-        self.time_step = params.time_step
-        self.und_step = params.und_step
-        self.derivative_type = contract.get_type()
-        self.stock_min = params.stock_min
-        self.stock_max = params.stock_max
-        self.num_of_und_steps = int(np.round((self.stock_max - self.stock_min) / float(self.und_step)))  # Number of stock price steps
-        self.num_of_time_steps = int(np.round(self.exp / float(self.time_step)))   # Number of time steps
-        self.interest_rate = model.get_rate()
-        self.grid = np.zeros((self.num_of_time_steps + 1, self.num_of_und_steps + 1))
-        self.matrix_first_entry, self.matrix_second_entry, self.matrix_third_entry = self.tridiagonal_matrix()
-
-    def setup_boundary_conditions(self):
-        if self.derivative_type == PutCallFwd.CALL:
-            self.grid[0, :] = np.maximum(np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1) - self.strike, 0)
-            self.grid[:, -1] = (self.stock_max - self.strike) * np.exp(
-                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
-
-        elif self.derivative_type == PutCallFwd.PUT:
-            self.grid[0, :] = np.maximum(self.strike - np.linspace(self.stock_min, self.stock_max, self.num_of_und_steps + 1), 0)
-            self.grid[:, -1] = (self.strike - self.stock_max) * np.exp(
-                -self.interest_rate * self.time_step * (self.num_of_time_steps - np.arange(self.num_of_time_steps + 1)))
-
-        else:
-            self.contract.raise_incorrect_derivative_type_error()
-
-    def explicit_method(self):
-        self.setup_boundary_conditions()
-        for j in range(1, self.num_of_time_steps + 1):
-            for i in range(1, self.num_of_und_steps):
-                alpha = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 - self.interest_rate * i)
-                beta = 1 - self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate)
-                gamma = 0.5 * self.time_step * (self.sigma ** 2 * i ** 2 + self.interest_rate * i)
-                self.grid[j, i] = alpha * self.grid[j - 1, i - 1] + beta * self.grid[j - 1, i] + gamma * self.grid[
-                    j - 1, i + 1]
-
-    def implicit_method(self):
-        self.setup_boundary_conditions()
-        for j in range(self.num_of_time_steps, 0, -1):
-            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_second_entry, self.grid[j, 1:self.num_of_und_steps]))
-
-    def crank_nicolson_method(self):
-        self.setup_boundary_conditions()
-        for j in range(self.num_of_time_steps, 0, -1):
-            self.grid[j - 1, 1:self.num_of_und_steps] = np.linalg.solve(self.matrix_first_entry, np.dot(self.matrix_third_entry, self.grid[j, 1:self.num_of_und_steps]))
-
-    def tridiagonal_matrix(self):
-        alpha = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 - self.interest_rate * np.arange(1, self.num_of_und_steps))
-        beta = 1 + self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate)
-        gamma = -0.5 * self.time_step * (self.sigma ** 2 * np.arange(1, self.num_of_und_steps) ** 2 + self.interest_rate * np.arange(1, self.num_of_und_steps))
-
-        matrix_first_entry = np.diag(alpha[1:], -1) + np.diag(beta) + np.diag(gamma[:-1], 1)
-        matrix_second_entry = np.diag(-alpha[1:], -1) + np.diag(1 - beta) + np.diag(-gamma[:-1], 1)
-        matrix_third_entry = np.diag(alpha[1:], -1) + np.diag(1 - beta) + np.diag(gamma[:-1], 1)
-
-        return matrix_first_entry, matrix_second_entry, matrix_third_entry
-
