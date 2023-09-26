@@ -80,7 +80,18 @@ class MCMethodFlatVol(MCMethod):
         super().__init__(contract, model, params)
 
     def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
-        vol = self.model.get_vol(self.contract.get_strike(), self.contract.get_expiry())
+        vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
+        rate = self.model.risk_free_rate
+        dt = t_to - t_from
+        return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
+
+
+class MCMethodBS(MCMethod):
+    def __int__(self, contract: Contract, model: BSVolModel, params: MCParams):
+        super().__init__(contract, model, params)
+
+    def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
+        vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         rate = self.model.risk_free_rate
         dt = t_to - t_from
         return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))

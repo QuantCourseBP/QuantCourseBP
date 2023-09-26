@@ -395,10 +395,10 @@ class EuropeanPDEPricer(Pricer):
 class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         super().__init__(contract, model, params)
-        if isinstance(model, FlatVolModel):
+        if isinstance(model, (FlatVolModel, BSVolModel)):
             self._mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
         else:
-            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
+            raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
         contract = self.contract
