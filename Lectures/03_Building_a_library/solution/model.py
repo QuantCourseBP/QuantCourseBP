@@ -4,20 +4,20 @@ from src.enums import *
 import numpy as np
 
 
+# TASK:
+# 1. Define MarketModel class.
+# 2. Define its __init__() method:
+#    a. Take an underlying Stock as input.
+#    b. Store the underlying and the corresponding market data (risk-free rate, spot, volatility).
+# 3. Implement calc_df() method which takes a tenor and returns the corresponding discount factor.
+
+
 class MarketModel:
-    def __init__(self, und: Stock) -> None:
-        self._interest_rate: float = MarketData.get_risk_free_rate()
-        self._spot: float = MarketData.get_spot()[und]
-        self._volatility: float = MarketData.get_vol()[und]
+    def __init__(self, underlying: Stock) -> None:
+        self.underlying: Stock = underlying
+        self.risk_free_rate: float = MarketData.get_risk_free_rate()
+        self.spot: float = MarketData.get_spot()[self.underlying]
+        self.vol: float = MarketData.get_vol()[self.underlying]
 
-    def get_rate(self) -> float:
-        return self._interest_rate
-
-    def get_spot(self) -> float:
-        return self._spot
-
-    def get_vol(self) -> float:
-        return self._volatility
-
-    def get_df(self, tenor: float) -> float:
-        return np.exp(-1.0 * self._interest_rate * tenor)
+    def calc_df(self, tenor: float) -> float:
+        return np.exp(-1.0 * self.risk_free_rate * tenor)

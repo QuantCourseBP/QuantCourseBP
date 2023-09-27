@@ -17,12 +17,12 @@ class TestPutCallParity:
         params = Params()
         model = MarketModel(underlying)
         strike = strike_over_spot * model.spot
-        contract = ForwardContract(underlying, LongShort.LONG, strike, expiry)
-        pricer['fwd'] = ForwardAnalyticPricer(contract, model, params)
-        contract = EuropeanContract(underlying, PutCallFwd.CALL, LongShort.LONG, strike, expiry)
-        pricer['call'] = EuropeanAnalyticPricer(contract, model, params)
-        contract = EuropeanContract(underlying, PutCallFwd.PUT, LongShort.SHORT, strike, expiry)
-        pricer['put'] = EuropeanAnalyticPricer(contract, model, params)
+
+        # Create contracts and pricers here
+        pricer['fwd'] = ...
+        pricer['call'] = ...
+        pricer['put'] = ...
+
         for deriv_type in pricer.keys():
             result[deriv_type] = dict()
             result[deriv_type]['fv'] = pricer[deriv_type].calc_fair_value()
