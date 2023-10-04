@@ -1,25 +1,33 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from market_data import *
-from src.enums import *
+from enums import *
 import numpy as np
 
 
-class MarketModel:
-    def __init__(self, und: Stock) -> None:
-        self._und: Stock = und
-        self._interest_rate: float = MarketData.get_risk_free_rate()
-        self._spot: float = MarketData.get_spot()[und]
-        self._volatility: float = MarketData.get_vol()[und]
+# TASK:
+# Implement BSVol and FlatVol models in the pricing library
 
-    def get_rate(self) -> float:
-        return self._interest_rate
 
-    def get_spot(self) -> float:
-        return self._spot
+class MarketModel(ABC):
+    def __init__(self, underlying: Stock) -> None:
+        self.underlying: Stock = underlying
+        self.risk_free_rate: float = MarketData.get_risk_free_rate()
+        self.spot: float = MarketData.get_spot()[self.underlying]
+        self.volgrid: VolGrid = MarketData.get_volgrid()[self.underlying]
 
-    def get_vol(self) -> float:
-        return self._volatility
+    def bump_rate(self, bump_size: float) -> None:
+        self.risk_free_rate += bump_size
 
-    def get_df(self, tenor: float) -> float:
-        return np.exp(-1.0 * self._interest_rate * tenor)
+    def bump_spot(self, bump_size: float) -> None:
+        self.spot += bump_size
+
+    def bump_volgrid(self, bump_size: float) -> None:
+        self.volgrid.values += bump_size
+
+    def calc_df(self, tenor: float) -> float:
+        return np.exp(-1.0 * self.risk_free_rate * tenor)
+
+    @abstractmethod
+    def get_vol(self, strike: float, expiry: float) -> float:
+        pass

@@ -28,7 +28,6 @@ class MarketModel(ABC):
     def get_vol(self, strike: float, expiry: float) -> float:
         pass
 
-
     @staticmethod
     def get_models() -> dict[str, MarketModel]:
         return {cls.__name__: cls for cls in MarketModel.__subclasses__()}
