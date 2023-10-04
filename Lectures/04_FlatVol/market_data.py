@@ -3,16 +3,16 @@ import os
 import numpy as np
 import pandas as pd
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
-from src.enums import *
+from enums import *
 
 
 class MarketData:
-    market_folder: str = os.path.join(os.path.dirname(__file__), '..', 'mkt')
+    market_folder: str = os.path.join(os.path.dirname(__file__), '..', '..', 'mkt')
     filename_spot: str = 'spot.csv'
     filename_vol_grid: str = 'vol_{und}.csv'
     risk_free_rate: float = 0.05
     spot: dict[Stock, float] = dict()
-    vol_grid: dict[Stock, VolGrid] = dict()
+    volgrid: dict[Stock, VolGrid] = dict()
     is_initialized: bool = False
 
     def __new__(cls) -> None:
@@ -29,7 +29,7 @@ class MarketData:
             MarketData.spot[stock] = data.at[name, 'spot']
 
     @staticmethod
-    def load_vol_grid() -> None:
+    def load_volgrid() -> None:
         for stock in Stock:
             name = stock.value
             filename = MarketData.filename_vol_grid.format(und=name.lower())
@@ -39,12 +39,12 @@ class MarketData:
             data = pd.read_csv(path, header=0, dtype=float)
             points = np.array((data['strike'], data['expiry']), dtype='float64').T
             values = np.array(data['volatility'], dtype='float64')
-            MarketData.vol_grid[stock] = VolGrid(stock, points, values)
+            MarketData.volgrid[stock] = VolGrid(stock, points, values)
 
     @staticmethod
     def initialize() -> None:
         MarketData.load_spot()
-        MarketData.load_vol_grid()
+        MarketData.load_volgrid()
         MarketData.is_initialized = True
 
     @staticmethod
@@ -64,9 +64,9 @@ class MarketData:
         return MarketData.spot
 
     @staticmethod
-    def get_vol_grid() -> dict[Stock, VolGrid]:
+    def get_volgrid() -> dict[Stock, VolGrid]:
         MarketData.validate()
-        return MarketData.vol_grid
+        return MarketData.volgrid
 
 
 class VolGrid:
