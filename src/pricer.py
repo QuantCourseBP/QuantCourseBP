@@ -24,6 +24,12 @@ class Pricer(ABC):
     def get_pricers() -> dict[str, Pricer]:
         return {cls.__name__: cls for cls in Pricer.__subclasses__()}
 
+    @classmethod
+    def create_pricer(cls, contract: Contract, model: MarketModel, params: Params) -> Pricer:
+        instance = cls.__new__(cls)
+        instance.__init__(contract, model, params)
+        return instance
+
     @abstractmethod
     def calc_fair_value(self) -> float:
         pass
@@ -36,7 +42,7 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self.model)
             model.bump_spot(b)
-            bumped_pricer = globals()[type(self).__name__](self.contract, model, self.params)
+            bumped_pricer = self.create_pricer(self.contract, model, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -50,7 +56,7 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self.model)
             model.bump_spot(b)
-            bumped_pricer = globals()[type(self).__name__](self.contract, model, self.params)
+            bumped_pricer = self.create_pricer(self.contract, model, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -67,7 +73,7 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self.model)
             model.bump_volgrid(b)
-            bumped_pricer = globals()[type(self).__name__](self.contract, model, self.params)
+            bumped_pricer = self.create_pricer(self.contract, model, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
@@ -91,7 +97,7 @@ class Pricer(ABC):
         for b in (bump_size, -bump_size):
             model = copy.deepcopy(self.model)
             model.bump_rate(b)
-            bumped_pricer = globals()[type(self).__name__](self.contract, model, self.params)
+            bumped_pricer = self.create_pricer(self.contract, model, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
