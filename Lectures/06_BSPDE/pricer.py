@@ -121,7 +121,6 @@ class EuropeanPDEPricer(Pricer):
         self.stock_min = self._bsPDE.stock_min
         self.stock_max = self._bsPDE.stock_max
         self.method = params.method
-        self.setup_boundary_conditions = self._bsPDE.setup_boundary_conditions()
 
     def calc_fair_value(self) -> float:
         pass

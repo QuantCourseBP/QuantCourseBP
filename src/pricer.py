@@ -368,7 +368,47 @@ class GenericTreePricer(Pricer):
         return price_tree[0][0]
 
 
-class EuropeanPDEPricer(Pricer):
+class GenericPDEPricer(Pricer):
+    def __init__(self, contract: Contract, model: MarketModel, params: PDEParams):
+        if not isinstance(params, PDEParams):
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        self.derivative_type = contract.derivative_type
+        self.bsPDE = BlackScholesPDE(contract, model, params)
+        self.grid = self.bsPDE.grid
+        self.initial_spot = model.spot
+        self.strike = contract.strike
+        self.interest_rate = model.risk_free_rate
+        self.time_step = params.time_step
+        self.und_step = params.und_step
+        self.stock_min = self.bsPDE.stock_min
+        self.stock_max = self.bsPDE.stock_max
+        self.ns_steps = self.bsPDE.num_of_und_steps  # Number of stock price steps
+        self.nt_steps = self.bsPDE.num_of_time_steps  # Number of time steps
+        self.method = params.method
+
+
+    def calc_fair_value(self) -> float:
+        if self.params.method == BSPDEMethod.EXPLICIT:
+            self.bsPDE.explicit_method()
+        elif self.params.method == BSPDEMethod.IMPLICIT:
+            self.bsPDE.implicit_method()
+        elif self.params.method == BSPDEMethod.CRANK_NICOLSON:
+            self.bsPDE.crank_nicolson_method()
+        else:
+            raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
+
+        # linear interpolation
+        down = int(np.floor((self.model.spot - self.stock_min) / self.params.und_step))
+        up = int(np.ceil((self.model.spot - self.stock_min) / self.params.und_step))
+        if down == up:
+            return self.bsPDE.grid[down, 0]
+        else:
+            return self.bsPDE.grid[down, 0] + (self.bsPDE.grid[up, 0] - self.bsPDE.grid[down, 0]) * \
+                   (self.model.spot - self.stock_min - down * self.params.und_step) / self.params.und_step
+
+
+class EuropeanPDEPricer(GenericPDEPricer):
     def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams):
         if not isinstance(contract, EuropeanContract):
             raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
@@ -376,26 +416,17 @@ class EuropeanPDEPricer(Pricer):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
         self.contract: EuropeanContract = contract
-        self.bs_pde: BlackScholesPDE = BlackScholesPDE(self.contract, self.model, self.params)
 
-    def calc_fair_value(self) -> float:
-        if self.params.method == BSPDEMethod.EXPLICIT:
-            self.bs_pde.explicit_method()
-        elif self.params.method == BSPDEMethod.IMPLICIT:
-            self.bs_pde.implicit_method()
-        elif self.params.method == BSPDEMethod.CRANK_NICOLSON:
-            self.bs_pde.crank_nicolson_method()
-        else:
-            raise ValueError("Invalid method. Use 'explicit', 'implicit', or 'crank_nicolson'.")
 
-        # linear interpolation
-        down = int(np.floor((self.model.spot - self.bs_pde.stock_min) / self.params.und_step))
-        up = int(np.ceil((self.model.spot - self.bs_pde.stock_min) / self.params.und_step))
-        if down == up:
-            return self.bs_pde.grid[down, 0]
-        else:
-            return self.bs_pde.grid[down, 0] + (self.bs_pde.grid[up, 0] - self.bs_pde.grid[down, 0]) * \
-                   (self.model.spot - self.bs_pde.stock_min - down * self.params.und_step) / self.params.und_step
+class AmericanPDEPricer(GenericPDEPricer):
+    def __init__(self, contract: AmericanContract, model: MarketModel, params: PDEParams):
+        if not isinstance(contract, AmericanContract):
+            raise TypeError(f'Contract must be of type AmericanContract but received {type(contract).__name__}')
+        if not isinstance(params, PDEParams):
+            raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        self.contract: AmericanContract = contract
+
 
 
 class GenericMCPricer(Pricer):
