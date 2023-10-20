@@ -83,7 +83,7 @@ class MCMethodFlatVol(MCMethod):
         vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         rate = self.model.risk_free_rate
         dt = t_to - t_from
-        return spot_from * np.exp((rate - 0.5 * vol ** 2) * dt + (vol * z * np.sqrt(dt)))
+        return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 class MCMethodBS(MCMethod):
@@ -94,7 +94,7 @@ class MCMethodBS(MCMethod):
         vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         rate = self.model.risk_free_rate
         dt = t_to - t_from
-        return spot_from * np.exp((rate - 0.5 * vol ** 2) * dt + (vol * z * np.sqrt(dt)))
+        return spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 class BlackScholesPDE(NumericalMethod):
@@ -157,7 +157,7 @@ class BlackScholesPDE(NumericalMethod):
                 self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate)
         gamma = 0.5 * self.params.time_step * (
                 self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate * self.measure_of_stock)
-        for j in range(self.num_of_time_steps - 1, -1, -1):  # for t
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
             for i in range(1, self.num_of_und_steps):  # for S
                 self.grid[i, j] = alpha[i] * self.grid[i - 1, j + 1] + beta[i] * self.grid[i, j + 1] + gamma[i] \
                                                   * self.grid[i + 1, j + 1]
@@ -177,10 +177,10 @@ class BlackScholesPDE(NumericalMethod):
         upper_matrix = np.diag(alpha[2:-1], -1) + np.diag(beta[1:-1]) + np.diag(gamma[1:-2], 1)
         lower_matrix = np.eye(self.num_of_und_steps - 1)
 
-        rhs_vector = np.zeros(self.num_of_und_steps - 1)
-        for j in range(self.num_of_time_steps - 1, -1, -1):  # for t
-            rhs_vector[0] = -alpha[1] * self.grid[0, j + 1]
-            rhs_vector[-1] = -gamma[-2] * self.grid[-1, j + 1]
+        rhs_vector = np.zeros(self.num_of_und_steps-1)
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
+            rhs_vector[0] = -alpha[1] * self.grid[0, j+1]
+            rhs_vector[-1] = -gamma[-2] * self.grid[-1, j+1]
             self.grid[1:-1, j] = np.linalg.solve(
                 lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1] + rhs_vector))
             if self.is_american:  # for American Contract
@@ -196,12 +196,12 @@ class BlackScholesPDE(NumericalMethod):
                 self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate)
         gamma = 0.25 * self.params.time_step * (
                 self.sigma ** 2 * self.measure_of_stock ** 2 + self.model.risk_free_rate * self.measure_of_stock)
-        upper_matrix = -np.diag(alpha[2:-1], -1) + np.diag(1 - beta[1:-1]) - np.diag(gamma[1:-2], 1)
+        upper_matrix = -np.diag(alpha[2:-1], -1) + np.diag(1-beta[1:-1]) - np.diag(gamma[1:-2], 1)
         lower_matrix = np.eye(self.num_of_und_steps - 1)
-        rhs_matrix = np.diag(alpha[2:-1], -1) + np.diag(1 + beta[1:-1]) + np.diag(gamma[1:-2], 1)
+        rhs_matrix = np.diag(alpha[2:-1], -1) + np.diag(1+beta[1:-1]) + np.diag(gamma[1:-2], 1)
 
         rhs_vector = np.zeros(self.num_of_und_steps - 1)
-        for j in range(self.num_of_time_steps - 1, -1, -1):  # for t
+        for j in range(self.num_of_time_steps-1, -1, -1):  # for t
             rhs_vector[0] = alpha[1] * (self.grid[0, j + 1] + self.grid[0, j])
             rhs_vector[-1] = gamma[-2] * (self.grid[-1, j + 1] + self.grid[-1, j])
             self.grid[1:-1, j] = np.linalg.solve(
@@ -259,7 +259,7 @@ class SimpleBinomialTree(NumericalMethod):
         if not self.df_computed:
             self.compute_df()
         p = (1 / self.df[1] - np.exp(self.down_log_step)) / (np.exp(self.up_log_step) - np.exp(self.down_log_step))
-        self.prob = (p, 1 - p)
+        self.prob = (p, 1-p)
         self.prob_computed = True
 
 
@@ -307,7 +307,7 @@ class MCParams(Params):
 
 
 class PDEParams(Params):
-    def __init__(self, und_step: int = 2, time_step: float = 1 / 1200, stock_min_mult: float = 0,
+    def __init__(self, und_step: int = 2, time_step: float = 1/1200, stock_min_mult: float = 0,
                  stock_max_mult: float = 2, method: BSPDEMethod = BSPDEMethod.EXPLICIT) -> None:
         self.und_step = und_step  # dS
         self.time_step = time_step  # dt
@@ -317,9 +317,7 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan,
-                 down_step_mult: float = np.nan) -> None:
+    def __init__(self, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
-        self.vol = vol
