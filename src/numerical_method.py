@@ -317,7 +317,8 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
+    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
+        self.vol = vol
