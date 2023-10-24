@@ -267,19 +267,20 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
     def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        vol = model.get_vol(contract.strike, contract.expiry) if np.isnan(params.vol) else params.vol
         up = BalancedSimpleBinomialTree.calc_step_mult(
             model.risk_free_rate,
-            model.get_vol(contract.strike, contract.expiry),
+            vol,
             params.nr_steps,
             contract.expiry,
             True)
         down = BalancedSimpleBinomialTree.calc_step_mult(
             model.risk_free_rate,
-            model.get_vol(contract.strike, contract.expiry),
+            vol,
             params.nr_steps,
             contract.expiry,
             False)
-        super().__init__(contract, model, TreeParams(params.nr_steps, up, down))
+        super().__init__(contract, model, TreeParams(params.nr_steps, np.nan, up, down))
 
     @staticmethod
     def calc_step_mult(rate: float, vol: float, nr_steps: int, exp: float, is_up_direction: bool) -> float:
@@ -316,7 +317,8 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
+    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
+        self.vol = vol
