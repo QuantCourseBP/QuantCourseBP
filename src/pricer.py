@@ -362,8 +362,8 @@ class EuropeanTreePricer(Pricer):
         for step in range(self.params.nr_steps - 1, -1, -1):
             for i in range(len(spot_tree[step])):
                 # discounted price is martingale
-                discounted_price = self.tree_method.prob[0] * price_tree[step + 1][i] + \
-                                   self.tree_method.prob[1] * price_tree[step + 1][i + 1]
+                discounted_price = self.tree_method.prob[1] * price_tree[step + 1][i] + \
+                                   self.tree_method.prob[0] * price_tree[step + 1][i + 1]
                 price_tree[step][i] = discounted_price
         return price_tree[0][0]
 
@@ -394,8 +394,8 @@ class AmericanTreePricer(Pricer):
                 log_spot = spot_tree[step][i]
                 spot = {self.contract.get_timeline()[0]: np.exp(log_spot)}
                 intrinsic_value = self.tree_method.df[step] * self.contract.payoff(spot)
-                discounted_continuation_value = self.tree_method.prob[0] * continuation_value_tree[step + 1][i] + \
-                                   self.tree_method.prob[1] * continuation_value_tree[step + 1][i + 1]
+                discounted_continuation_value = self.tree_method.prob[1] * continuation_value_tree[step + 1][i] + \
+                                   self.tree_method.prob[0] * continuation_value_tree[step + 1][i + 1]
                 continuation_value_tree[step][i] = max(discounted_continuation_value,intrinsic_value) \
                     if self.contract.long_short == LongShort.LONG else min(discounted_continuation_value,intrinsic_value)
         return continuation_value_tree[0][0]
