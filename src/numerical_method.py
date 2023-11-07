@@ -258,8 +258,9 @@ class SimpleBinomialTree(NumericalMethod):
             return
         if not self.df_computed:
             self.compute_df()
-        p = (1 / self.df[1] - np.exp(self.down_log_step)) / (np.exp(self.up_log_step) - np.exp(self.down_log_step))
-        self.prob = (p, 1-p)
+        prob_up = ((1 / self.df[1] - np.exp(self.down_log_step)) /
+                   (np.exp(self.up_log_step) - np.exp(self.down_log_step)))
+        self.prob = (prob_up, 1-prob_up)
         self.prob_computed = True
 
 
@@ -317,7 +318,8 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
+    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan,
+                 down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult

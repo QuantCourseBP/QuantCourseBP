@@ -366,8 +366,8 @@ class TreePricer(Pricer):
             for i in range(len(spot_tree[step])):
                 log_spot = spot_tree[step][i]
                 spot = {self.contract.get_timeline()[0]: np.exp(log_spot)}
-                discounted_continuation_value = self.tree_method.prob[0] * continuation_value_tree[step + 1][i] + \
-                                                self.tree_method.prob[1] * continuation_value_tree[step + 1][i + 1]
+                discounted_continuation_value = self.tree_method.prob[1] * continuation_value_tree[step + 1][i] + \
+                                                self.tree_method.prob[0] * continuation_value_tree[step + 1][i + 1]
                 continuation_value_tree[step][i] = (
                     self.pre_final_value(spot, step, discounted_continuation_value))
         return continuation_value_tree[0][0]
