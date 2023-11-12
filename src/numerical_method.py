@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 from src.model import *
 import numpy as np
-from src.contract import Contract, EuropeanContract
+from src.contract import Contract, EuropeanContract, AmericanContract
 
 
 class NumericalMethod(ABC):
@@ -98,13 +98,18 @@ class MCMethodBS(MCMethod):
 
 
 class BlackScholesPDE(NumericalMethod):
-    def __init__(self, contract: EuropeanContract, model: MarketModel, params: PDEParams) -> None:
-        if not isinstance(contract, EuropeanContract):
-            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+    def __init__(self, contract: Contract, model: MarketModel, params: PDEParams) -> None:
         if not isinstance(params, PDEParams):
             raise TypeError(f'Params must be of type PDEParams but received {type(params).__name__}')
+        if isinstance(contract, AmericanContract):
+            self.is_american = True
+        elif isinstance(contract, EuropeanContract):
+            self.is_american = False
+        else:
+            self.contract.raise_incorrect_derivative_type_error()
+
         super().__init__(contract, model, params)
-        self.contract: EuropeanContract = contract
+        self.contract = contract
         self.sigma: float = self.model.get_vol(self.contract.strike, self.contract.expiry)
         self.stock_min: float = self.params.stock_min_mult * self.model.spot
         self.stock_max: float = self.params.stock_max_mult * self.model.spot
@@ -133,6 +138,17 @@ class BlackScholesPDE(NumericalMethod):
         else:
             self.contract.raise_incorrect_derivative_type_error()
 
+    def grid_intrinsic_value(self):
+        intrinsic_value = None
+        if self.is_american:
+            if self.contract.derivative_type == PutCallFwd.CALL:
+                intrinsic_value = np.maximum(self.stock_disc - self.contract.strike, 0)
+            elif self.contract.derivative_type == PutCallFwd.PUT:
+                intrinsic_value = np.maximum(self.contract.strike - self.stock_disc, 0)
+            else:
+                self.contract.raise_incorrect_derivative_type_error()
+        return intrinsic_value
+
     def explicit_method(self) -> None:
         self.setup_boundary_conditions()
         alpha = 0.5 * self.params.time_step * (
@@ -144,7 +160,11 @@ class BlackScholesPDE(NumericalMethod):
         for j in range(self.num_of_time_steps-1, -1, -1):  # for t
             for i in range(1, self.num_of_und_steps):  # for S
                 self.grid[i, j] = alpha[i] * self.grid[i - 1, j + 1] + beta[i] * self.grid[i, j + 1] + gamma[i] \
-                                              * self.grid[i + 1, j + 1]
+                                                  * self.grid[i + 1, j + 1]
+                if self.is_american:  # for American Contract
+                    intrinsic_value = self.grid_intrinsic_value()[i]
+                    self.grid[i, j] = max(self.grid[i, j], intrinsic_value) \
+                        if self.contract.long_short == LongShort.LONG else min(self.grid[i, j], intrinsic_value)
 
     def implicit_method(self) -> None:
         self.setup_boundary_conditions()
@@ -163,6 +183,10 @@ class BlackScholesPDE(NumericalMethod):
             rhs_vector[-1] = -gamma[-2] * self.grid[-1, j+1]
             self.grid[1:-1, j] = np.linalg.solve(
                 lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1] + rhs_vector))
+            if self.is_american:  # for American Contract
+                intrinsic_value = self.grid_intrinsic_value()
+                self.grid[:, j] = max(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
+                    else min(self.grid[:, j], intrinsic_value)
 
     def crank_nicolson_method(self) -> None:
         self.setup_boundary_conditions()
@@ -182,6 +206,10 @@ class BlackScholesPDE(NumericalMethod):
             rhs_vector[-1] = gamma[-2] * (self.grid[-1, j + 1] + self.grid[-1, j])
             self.grid[1:-1, j] = np.linalg.solve(
                 lower_matrix, np.linalg.solve(upper_matrix, (rhs_matrix @ self.grid[1:-1, j + 1]) + rhs_vector))
+            if self.is_american:  # for American Contract
+                intrinsic_value = self.grid_intrinsic_value()
+                self.grid[:, j] = max(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
+                    else min(self.grid[:, j], intrinsic_value)
 
 
 class SimpleBinomialTree(NumericalMethod):
@@ -230,8 +258,9 @@ class SimpleBinomialTree(NumericalMethod):
             return
         if not self.df_computed:
             self.compute_df()
-        p = (1 / self.df[1] - np.exp(self.down_log_step)) / (np.exp(self.up_log_step) - np.exp(self.down_log_step))
-        self.prob = (p, 1-p)
+        prob_up = ((1 / self.df[1] - np.exp(self.down_log_step)) /
+                   (np.exp(self.up_log_step) - np.exp(self.down_log_step)))
+        self.prob = (prob_up, 1-prob_up)
         self.prob_computed = True
 
 
@@ -239,19 +268,20 @@ class BalancedSimpleBinomialTree(SimpleBinomialTree):
     def __init__(self, contract: Contract, model: MarketModel, params: Params):
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        vol = model.get_vol(contract.strike, contract.expiry) if np.isnan(params.vol) else params.vol
         up = BalancedSimpleBinomialTree.calc_step_mult(
             model.risk_free_rate,
-            model.get_vol(contract.strike, contract.expiry),
+            vol,
             params.nr_steps,
             contract.expiry,
             True)
         down = BalancedSimpleBinomialTree.calc_step_mult(
             model.risk_free_rate,
-            model.get_vol(contract.strike, contract.expiry),
+            vol,
             params.nr_steps,
             contract.expiry,
             False)
-        super().__init__(contract, model, TreeParams(params.nr_steps, up, down))
+        super().__init__(contract, model, TreeParams(params.nr_steps, np.nan, up, down))
 
     @staticmethod
     def calc_step_mult(rate: float, vol: float, nr_steps: int, exp: float, is_up_direction: bool) -> float:
@@ -288,7 +318,9 @@ class PDEParams(Params):
 
 
 class TreeParams(Params):
-    def __init__(self, nr_steps: int = 1, up_step_mult: float = np.nan, down_step_mult: float = np.nan) -> None:
+    def __init__(self, nr_steps: int = 1, vol: float = np.nan, up_step_mult: float = np.nan,
+                 down_step_mult: float = np.nan) -> None:
         self.nr_steps = nr_steps
         self.up_step_mult = up_step_mult
         self.down_step_mult = down_step_mult
+        self.vol = vol
