@@ -144,19 +144,45 @@ class AsianContract(Contract):
         super().__init__(underlying, derivative_type, long_short, strike, expiry, num_mon)
 
     def get_timeline(self) -> list[float]:
-        return [round(((i+1) / self.num_mon) * self.expiry, self.timeline_digits) for i in range(self.num_mon)]
+        pass
 
     def payoff(self, spot: dict[float, float]) -> float:
-        timeline = self.get_timeline()
-        if not set(timeline).issubset(set(spot.keys())):
-            self.raise_missing_spot_error(list(spot.keys()))
-        obs = [spot[t] for t in timeline]
-        if self.derivative_type == PutCallFwd.CALL:
-            return self.direction * max(mean(obs) - self.strike, 0)
-        elif self.derivative_type == PutCallFwd.PUT:
-            return self.direction * max(self.strike - mean(obs), 0)
-        else:
-            self.raise_incorrect_derivative_type_error()
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def get_timeline(self) -> list[float]:
+    #     return [round(((i+1) / self.num_mon) * self.expiry, self.timeline_digits) for i in range(self.num_mon)]
+    #
+    # def payoff(self, spot: dict[float, float]) -> float:
+    #     timeline = self.get_timeline()
+    #     if not set(timeline).issubset(set(spot.keys())):
+    #         self.raise_missing_spot_error(list(spot.keys()))
+    #     obs = [spot[t] for t in timeline]
+    #     if self.derivative_type == PutCallFwd.CALL:
+    #         return self.direction * max(mean(obs) - self.strike, 0)
+    #     elif self.derivative_type == PutCallFwd.PUT:
+    #         return self.direction * max(self.strike - mean(obs), 0)
+    #     else:
+    #         self.raise_incorrect_derivative_type_error()
 
 
 class EuropeanBarrierContract(Contract):

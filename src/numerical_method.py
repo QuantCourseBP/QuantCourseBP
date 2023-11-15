@@ -91,7 +91,7 @@ class MCMethodFlatVol(MCMethod):
         elif self.params.evolve_spot_method == "Euler":
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
         else:
-            raise TypeError( self.params.evolve_spot_method  + "evolve method is not implemented")
+            raise TypeError(self.params.evolve_spot_method  + "evolve method is not implemented")
         return new_spot
 
 
