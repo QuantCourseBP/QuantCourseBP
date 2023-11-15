@@ -9,6 +9,7 @@ from src.contract import *
 from src.model import *
 from src.numerical_method import *
 
+maci = 12
 
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
@@ -478,7 +479,7 @@ class GenericMCPricer(Pricer):
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
             fixing_schedule = dict(zip([0] + contractual_timeline,
-                                        np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
+                                        np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.expiry
         if self.params.control_variate:
