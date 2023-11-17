@@ -337,10 +337,8 @@ class EuropeanAnalyticPricer(Pricer):
             self.raise_unsupported_greek_method_error(method)
 
 
-class TreePricer(Pricer):
+class TreePricer(Pricer, ABC):
     def __init__(self, contract: Contract, model: MarketModel, params: TreeParams):
-        # if not isinstance(contract, EuropeanContract):
-        #     raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
@@ -350,8 +348,9 @@ class TreePricer(Pricer):
             tree_method = SimpleBinomialTree(self.contract, self.model, self.params)
         self.tree_method = tree_method
 
+    @abstractmethod
     def pre_final_value(self, spot: dict[float, float], step: int, discounted_continuation_value: float) -> float:
-        raise RuntimeError('pre_final_value must be overriden in child classes.')
+        pass
 
     def calc_fair_value(self) -> float:
         self.tree_method.init_tree()
