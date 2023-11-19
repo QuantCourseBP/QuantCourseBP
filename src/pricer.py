@@ -471,119 +471,49 @@ class GenericMCPricer(Pricer):
             raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
-        pass
-        # 1, generate simulated spot levels using simulate_spot_paths() of MCMethod
-        # 2, calculate the payoff on each path:
-        #   2.1    create dictionary which maps simulated spot levels to timeline dates
-        #   2.2    evaluate the contract's payoff function
-        # 3, calculate the discounted mean of the payoff
-        # 4, calc the std dev and using it the 95% confidence interval around the fair value
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # contract = self.contract
-        # contractual_timeline = contract.get_timeline()
-        # spot_paths = self.mc_method.simulate_spot_paths()
-        # num_of_paths = self.params.num_of_paths
-        # path_payoff = np.empty(num_of_paths)
-        # for path in range(num_of_paths):
-        #     fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
-        #     path_payoff[path] = contract.payoff(fixing_schedule)
-        # maturity = contract.expiry
-        # if self.params.control_variate:
-        #     # adjust path_payoff inplace
-        #     self.apply_control_var_adj(path_payoff, spot_paths)
-        # fv = mean(path_payoff) * self.model.calc_df(maturity)
-        # fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
-        #                            np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
-        #                           for mult in [-1, 1]])
-        # return fv, fv_conf_interval
+        contract = self.contract
+        contractual_timeline = contract.get_timeline()
+        spot_paths = self.mc_method.simulate_spot_paths()
+        num_of_paths = self.params.num_of_paths
+        path_payoff = np.empty(num_of_paths)
+        for path in range(num_of_paths):
+            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
+            path_payoff[path] = contract.payoff(fixing_schedule)
+        maturity = contract.expiry
+        if self.params.control_variate:
+            # adjust path_payoff inplace
+            self.apply_control_var_adj(path_payoff, spot_paths)
+        fv = mean(path_payoff) * self.model.calc_df(maturity)
+        fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
+                                   np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
+                                  for mult in [-1, 1]])
+        return fv, fv_conf_interval
 
     def calc_fair_value(self) -> float:
         return self.calc_fair_value_with_ci()[0]
 
     def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
-        pass
-        # this function takes two inputs:
-        #     path_payoff: these are the already evaluated pathwise payoffs of the original contract.
-        #     spot_paths: these are the simulated spot levels
-        # this function obtains a helper pricer for the MC contract
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # pricer_cv = self.get_controlvar_helper_pricer(self.contract)
-        # contract_cv = pricer_cv.contract
-        # num_of_path = len(path_payoff)
-        # path_payoff_cv = np.empty(num_of_path)
-        # for path in range(num_of_path):
-        #     fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
-        #     path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
-        # cov = np.cov(path_payoff, path_payoff_cv)
-        # b = cov[0][1]/cov[1][1]
-        # contract_cv_mean = pricer_cv.calc_fair_value() / self.model.calc_df(contract_cv.expiry)
-        # for i in range(num_of_path):
-        #     path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
+        pricer_cv = self.get_controlvar_helper_pricer(self.contract)
+        contract_cv = pricer_cv.contract
+        num_of_path = len(path_payoff)
+        path_payoff_cv = np.empty(num_of_path)
+        for path in range(num_of_path):
+            fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
+            path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
+        cov = np.cov(path_payoff, path_payoff_cv)
+        b = cov[0][1]/cov[1][1]
+        contract_cv_mean = pricer_cv.calc_fair_value() / self.model.calc_df(contract_cv.expiry)
+        for i in range(num_of_path):
+            path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
 
     def get_controlvar_helper_pricer(self, contract: Contract) -> Pricer:
-        pass
-        # based on the input contract it returns with an analytic pricer for the control variate associated to the input contract
-        # implement it for EuropeanContracts - it should use Forward contract as control variate
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # if isinstance(contract, EuropeanContract):
-        #     und = contract.underlying
-        #     exp = contract.expiry
-        #     contract_cv = ForwardContract(und, LongShort.LONG, 1., exp)
-        #     return ForwardAnalyticPricer(contract_cv, self.model, Params())
-        # else:
-        #     raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
+        if isinstance(contract, EuropeanContract):
+            und = contract.underlying
+            exp = contract.expiry
+            contract_cv = ForwardContract(und, LongShort.LONG, 1., exp)
+            return ForwardAnalyticPricer(contract_cv, self.model, Params())
+        else:
+            raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
 
 
 class AsianMomentMatchingPricer(Pricer):

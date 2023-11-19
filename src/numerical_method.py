@@ -86,12 +86,12 @@ class MCMethodFlatVol(MCMethod):
         vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         rate = self.model.risk_free_rate
         dt = t_to - t_from
-        if self.params.evolve_spot_method == "Analytic":
+        if self.params.evolve_spot_method == MCNumMethod.EXACT:
             new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
-        elif self.params.evolve_spot_method == "Euler":
+        elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
         else:
-            raise TypeError(self.params.evolve_spot_method  + "evolve method is not implemented")
+            raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
 
 
@@ -103,12 +103,12 @@ class MCMethodBS(MCMethod):
         vol = self.model.get_vol(self.contract.strike, self.contract.expiry)
         rate = self.model.risk_free_rate
         dt = t_to - t_from
-        if self.params.evolve_spot_method == "Analytic":
-            new_spot = spot_from * np.exp((rate - 0.5 * vol ** 2) * dt + (vol * z * np.sqrt(dt)))
-        elif self.params.evolve_spot_method == "Euler":
-            new_spot = spot_from + rate * spot_from * dt + vol * spot_from * z * np.sqrt(dt)
+        if self.params.evolve_spot_method == MCNumMethod.EXACT:
+            new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
+        elif self.params.evolve_spot_method == MCNumMethod.EULER:
+            new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
         else:
-            raise TypeError(self.params.evolve_spot_method + "evolve method is not implemented")
+            raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
 
 
@@ -312,9 +312,9 @@ class Params(ABC):
 
 
 class MCParams(Params):
-    def __init__(self, seed: int = 1, num_of_path: int = 10000, tenor_frequency: int = 12,
+    def __init__(self, seed: int = 1, num_of_path: int = 10000, tenor_frequency: int = 4,
                  standardize: bool = True, antithetic: bool = True, control_variate: bool = False,
-                 evolve_spot_method: str = 'Euler') -> None:
+                 evolve_spot_method: MCNumMethod = MCNumMethod.EULER) -> None:
         self.seed = seed
         self.num_of_paths = num_of_path
         self.tenor_frequency = tenor_frequency
