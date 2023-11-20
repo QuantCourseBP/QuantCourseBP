@@ -9,7 +9,6 @@ from src.contract import *
 from src.model import *
 from src.numerical_method import *
 
-maci = 12
 
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
@@ -338,8 +337,40 @@ class EuropeanAnalyticPricer(Pricer):
             self.raise_unsupported_greek_method_error(method)
 
 
-class TreePricer(Pricer, ABC):
-    def __init__(self, contract: Contract, model: MarketModel, params: TreeParams):
+class EuropeanTreePricer(Pricer):
+    def __init__(self, contract: EuropeanContract, model: MarketModel, params: TreeParams):
+        if not isinstance(contract, EuropeanContract):
+            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
+        if not isinstance(params, TreeParams):
+            raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
+        super().__init__(contract, model, params)
+        if np.isnan(self.params.up_step_mult) or np.isnan(self.params.down_step_mult):
+            tree_method = BalancedSimpleBinomialTree(self.contract, self.model, self.params)
+        else:
+            tree_method = SimpleBinomialTree(self.contract, self.model, self.params)
+        self.tree_method: SimpleBinomialTree = tree_method
+
+    def calc_fair_value(self) -> float:
+        self.tree_method.init_tree()
+        spot_tree = self.tree_method.spot_tree
+        price_tree = [[np.nan for _ in level] for level in spot_tree]
+        for i in range(len(spot_tree[-1])):
+            log_spot = spot_tree[-1][i]
+            spot = {self.contract.get_timeline()[0]: np.exp(log_spot)}
+            discounted_price = self.tree_method.df[-1] * self.contract.payoff(spot)
+            price_tree[-1][i] = discounted_price
+        for step in range(self.params.nr_steps - 1, -1, -1):
+            for i in range(len(spot_tree[step])):
+                # discounted price is martingale
+                discounted_price = self.tree_method.prob[1] * price_tree[step + 1][i] + \
+                                   self.tree_method.prob[0] * price_tree[step + 1][i + 1]
+                price_tree[step][i] = discounted_price
+        return price_tree[0][0]
+
+class AmericanTreePricer(Pricer):
+    def __init__(self, contract: AmericanContract, model: MarketModel, params: TreeParams):
+        if not isinstance(contract, AmericanContract):
+            raise TypeError(f'Contract must be of type AmericanContract but received {type(contract).__name__}')
         if not isinstance(params, TreeParams):
             raise TypeError(f'Params must be of type TreeParams but received {type(params).__name__}')
         super().__init__(contract, model, params)
@@ -348,10 +379,6 @@ class TreePricer(Pricer, ABC):
         else:
             tree_method = SimpleBinomialTree(self.contract, self.model, self.params)
         self.tree_method = tree_method
-
-    @abstractmethod
-    def pre_final_value(self, spot: dict[float, float], step: int, discounted_continuation_value: float) -> float:
-        pass
 
     def calc_fair_value(self) -> float:
         self.tree_method.init_tree()
@@ -366,33 +393,12 @@ class TreePricer(Pricer, ABC):
             for i in range(len(spot_tree[step])):
                 log_spot = spot_tree[step][i]
                 spot = {self.contract.get_timeline()[0]: np.exp(log_spot)}
+                intrinsic_value = self.tree_method.df[step] * self.contract.payoff(spot)
                 discounted_continuation_value = self.tree_method.prob[1] * continuation_value_tree[step + 1][i] + \
-                                                self.tree_method.prob[0] * continuation_value_tree[step + 1][i + 1]
-                continuation_value_tree[step][i] = (
-                    self.pre_final_value(spot, step, discounted_continuation_value))
+                                   self.tree_method.prob[0] * continuation_value_tree[step + 1][i + 1]
+                continuation_value_tree[step][i] = max(discounted_continuation_value,intrinsic_value) \
+                    if self.contract.long_short == LongShort.LONG else min(discounted_continuation_value,intrinsic_value)
         return continuation_value_tree[0][0]
-
-
-class EuropeanTreePricer(TreePricer):
-    def __init__(self, contract: EuropeanContract, model: MarketModel, params: TreeParams):
-        if not isinstance(contract, EuropeanContract):
-            raise TypeError(f'Contract must be of type EuropeanContract but received {type(contract).__name__}')
-        super().__init__(contract, model, params)
-
-    def pre_final_value(self, spot: dict[float, float], step: int, discounted_continuation_value: float) -> float:
-        return discounted_continuation_value
-
-
-class AmericanTreePricer(TreePricer):
-    def __init__(self, contract: AmericanContract, model: MarketModel, params: TreeParams):
-        if not isinstance(contract, AmericanContract):
-            raise TypeError(f'Contract must be of type AmericanContract but received {type(contract).__name__}')
-        super().__init__(contract, model, params)
-
-    def pre_final_value(self, spot: dict[float, float], step: int, discounted_continuation_value: float) -> float:
-        intrinsic_value = self.tree_method.df[step] * self.contract.payoff(spot)
-        return max(discounted_continuation_value, intrinsic_value) if self.contract.long_short == LongShort.LONG \
-            else min(discounted_continuation_value, intrinsic_value)
 
 
 class GenericPDEPricer(Pricer):
@@ -460,19 +466,18 @@ class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         super().__init__(contract, model, params)
         if isinstance(model, (FlatVolModel, BSVolModel)):
-            self.mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
+            self._mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
         else:
             raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
         contract = self.contract
         contractual_timeline = contract.get_timeline()
-        spot_paths = self.mc_method.simulate_spot_paths()
+        spot_paths = self._mc_method.simulate_spot_paths()
         num_of_paths = self.params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
-            fixing_schedule = dict(zip([0] + contractual_timeline,
-                                        np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
+            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.expiry
         if self.params.control_variate:
@@ -493,6 +498,7 @@ class GenericMCPricer(Pricer):
         num_of_path = len(path_payoff)
         path_payoff_cv = np.empty(num_of_path)
         for path in range(num_of_path):
+            # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
             fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
             path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
         cov = np.cov(path_payoff, path_payoff_cv)
@@ -551,12 +557,6 @@ class BarrierAnalyticPricer(Pricer):
         super().__init__(contract, model, params)
         self._contract: EuropeanBarrierContract = contract
 
-    @staticmethod
-    def bs_call(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float, df: float) -> float:
-        d1 = EuropeanAnalyticPricer.d1(spot / strike, vol, rate, time_to_expiry)
-        d2 = EuropeanAnalyticPricer.d2(spot / strike, vol, rate, time_to_expiry)
-        return spot * norm.cdf(d1) - strike * df * norm.cdf(d2)
-
     def calc_fair_value(self) -> float:
         direction = self._contract.direction
         strike = self._contract.strike
@@ -570,50 +570,11 @@ class BarrierAnalyticPricer(Pricer):
         updown = self._contract.barrier.up_down
         inout = self._contract.barrier.in_out
 
-        if self._contract.get_type() == PutCallFwd.CALL:
-            if updown == UpDown.DOWN:
-                if inout == InOut.IN:
-                    return direction * spot * (barrier / spot) ** (2 * rate / vol **2) * \
-                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
-                if inout == InOut.OUT:
-                    price_bs = BarrierAnalyticPricer.bs_call(spot, strike, vol, rate, time_to_expiry, df)
-                    price_dic = direction * spot * (barrier / spot) ** (2 * rate / vol ** 2) * \
-                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
-                    return price_bs - price_dic
+        if (self._contract.derivative_type == PutCallFwd.CALL) & (updown == UpDown.DOWN) & (inout == InOut.IN):
+            part1 = spot * (barrier/spot)**(2*rate/vol**2+1) * \
+                    norm.cdf(EuropeanAnalyticPricer.calc_d1(barrier ** 2 / (strike * spot), vol, rate, time_to_expiry))
+            part2 = strike * (barrier/spot)**(2*rate/vol**2-1) * \
+                    norm.cdf(EuropeanAnalyticPricer.calc_d2(barrier ** 2 / (strike * spot), vol, rate, time_to_expiry))
+            return direction * (part1 - df * part2)
         else:
             self.raise_pricer_not_implemented_error()
- 
-
-class BarrierBrownianBridgePricer(Pricer):
-    def __init__(self, contract: EuropeanBarrierContract, model: MarketModel, params: Params):
-        if not isinstance(contract, EuropeanBarrierContract):
-            raise TypeError(f'Contract must be of type EuropeanBarrierContract but received {type(contract).__name__}')
-        super().__init__(contract, model, params)
-
-        if isinstance(model, FlatVolModel):
-            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
-        else:
-            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
-
-    def calc_fair_value(self) -> float:
-            contract = self._contract
-            # num_mon_mod = round(contract._num_mon / 10)    # BB specific
-            num_mon_mod = contract._num_mon
-            contract.set_num_mon(num_mon_mod)
-            contractual_timeline = contract.get_timeline()
-            spot_paths = self._mc_method.simulate_spot_paths()
-            num_of_paths = self._params.num_of_paths
-            contract.set_vol(self._model.get_vol(contract._strike, contract._expiry))   # BB specific
-            path_payoff = np.empty(num_of_paths)
-            for path in range(num_of_paths):
-                fixing_schedule = dict(zip([0] + contractual_timeline,
-                                           np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
-                path_payoff[path] = contract.payoff(fixing_schedule)
-            maturity = contract.get_expiry()
-            fv = mean(path_payoff) * self._model.get_df(maturity)
-            fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
-                          * self._model.get_df(maturity) for mult in [-1, 1]]
-            return fv, fv_contint
-
-
-
