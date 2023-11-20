@@ -459,14 +459,14 @@ class GenericMCPricer(Pricer):
     def __init__(self, contract: Contract, model: MarketModel, params: MCParams):
         super().__init__(contract, model, params)
         if isinstance(model, (FlatVolModel, BSVolModel)):
-            self._mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
+            self.mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
         else:
             raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
         contract = self.contract
         contractual_timeline = contract.get_timeline()
-        spot_paths = self._mc_method.simulate_spot_paths()
+        spot_paths = self.mc_method.simulate_spot_paths()
         num_of_paths = self.params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
@@ -491,7 +491,6 @@ class GenericMCPricer(Pricer):
         num_of_path = len(path_payoff)
         path_payoff_cv = np.empty(num_of_path)
         for path in range(num_of_path):
-            # TODO: pick simulated spots only for the dates which are relevant for the control var contract's payoff
             fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
             path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
         cov = np.cov(path_payoff, path_payoff_cv)

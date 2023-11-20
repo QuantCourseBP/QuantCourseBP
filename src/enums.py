@@ -47,3 +47,9 @@ class BSPDEMethod(str, Enum):
     EXPLICIT: str = 'EXPLICIT'
     IMPLICIT: str = 'IMPLICIT'
     CRANK_NICOLSON: str = 'CRANK_NICOLSON'
+
+
+class MCNumMethod(str, Enum):
+    EULER: str = 'EULER'
+    MILSTEIN: str = 'MILSTEIN'
+    EXACT: str = 'EXACT'
