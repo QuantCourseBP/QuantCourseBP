@@ -1,7 +1,9 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from src.enums import *
+from src.utils import *
 from statistics import mean
+import numpy as np
 
 
 class Contract(ABC):
@@ -184,8 +186,9 @@ class EuropeanBarrierContract(Contract):
         if not set(timeline).issubset(set(spot.keys())):
             self.raise_missing_spot_error(list(spot.keys()))
         obs = [spot[t] for t in timeline]
-        in_out = self.barrier.in_out
-        is_breached = int(self.barrier.is_breached(obs))
+        in_out = self._barrier.get_in_out()
+        is_breached = self._barrier.is_breached(spot, self._vol)
+
         mult = float(int(in_out == InOut.IN) * is_breached + int(in_out == InOut.OUT) * (1 - is_breached))
         if self.derivative_type == PutCallFwd.CALL:
             return self.direction * mult * max(obs[-1] - self.strike, 0)
@@ -205,19 +208,36 @@ class Barrier:
             self.raise_incorrect_in_out_type()
         self.in_out: InOut = in_out
 
-    def in_out(self) -> InOut:
-        return self.in_out
+    def get_barrier_level(self) -> float:
+        return self._barrier_level
 
-    def is_breached(self, observations: list[float]) -> bool:
-        if self.up_down == UpDown.UP:
-            return any([self.barrier_level <= price for price in observations])
-        elif self.up_down == UpDown.DOWN:
-            return any([self.barrier_level >= price for price in observations])
+    def get_up_down(self) -> UpDown:
+        return self._up_down
+
+    def get_in_out(self) -> InOut:
+        return self._in_out
+
+    def is_breached(self, spot: dict[float, float], vol: float = -1) -> float:
+        timeline = list(spot.keys())
+        observations = [spot[t] for t in timeline]
+        if vol == -1:
+            if self._up_down == UpDown.UP:
+                return float(any([self._barrier_level <= price for price in observations]))
+            elif self._up_down == UpDown.DOWN:
+                return float(any([self._barrier_level >= price for price in observations]))
+            else:
+                self._raise_incorrect_up_down_type()
         else:
-            self.raise_incorrect_up_down_type()
+            probs_no_breach = []
+            for i in range(len(timeline)-1):
+                prob = prob_breach_barrier_segment(self._barrier_level, vol, timeline[i], timeline[i+1],
+                                                   observations[i], observations[i+1], self._up_down)
+                probs_no_breach.append(1-prob)
+            return 1 - np.prod(probs_no_breach)
 
-    def raise_incorrect_up_down_type(self):
+
+    def _raise_incorrect_up_down_type(self):
         raise TypeError(f'Updown parameter of {type(self).__name__} must be UP or DOWN')
 
-    def raise_incorrect_in_out_type(self):
+    def _raise_incorrect_in_out_type(self):
         raise TypeError(f'Inout parameter of {type(self).__name__} must be IN or OUT')

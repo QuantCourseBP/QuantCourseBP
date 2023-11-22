@@ -1,8 +1,23 @@
 import numpy as np
 from src.market_data import *
+from src.enums import *
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.interpolate import Akima1DInterpolator
+
+
+def prob_breach_barrier_segment(barrier: float, vol: float, t1: float, t2: float,
+                                val1: float, val2: float, up_down: UpDown) -> float:
+    if up_down == UpDown.DOWN:
+        if barrier > min(val1, val2):
+            return 1.0
+        else:
+            return np.exp(-2 * np.log(val1 / barrier) * np.log(val2 / barrier) / (vol ** 2 * (t2 - t1)))
+    else:
+        if barrier < max(val1, val2):
+            return 1.0
+        else:
+            return np.exp(-2 * np.log(barrier / val1) * np.log(barrier / val2) / (vol ** 2 * (t2 - t1)))
 
 
 def plot_vol_surface(volgrid: VolGrid, num_steps=30, show_obs=True, view=(25, 50)) -> None:

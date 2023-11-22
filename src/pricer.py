@@ -9,6 +9,7 @@ from src.contract import *
 from src.model import *
 from src.numerical_method import *
 
+maci = 12
 
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
@@ -470,7 +471,8 @@ class GenericMCPricer(Pricer):
         num_of_paths = self.params.num_of_paths
         path_payoff = np.empty(num_of_paths)
         for path in range(num_of_paths):
-            fixing_schedule = dict(zip(contractual_timeline, spot_paths[path, :]))
+            fixing_schedule = dict(zip([0] + contractual_timeline,
+                                        np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
             path_payoff[path] = contract.payoff(fixing_schedule)
         maturity = contract.expiry
         if self.params.control_variate:
@@ -549,6 +551,12 @@ class BarrierAnalyticPricer(Pricer):
         super().__init__(contract, model, params)
         self._contract: EuropeanBarrierContract = contract
 
+    @staticmethod
+    def bs_call(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float, df: float) -> float:
+        d1 = EuropeanAnalyticPricer.d1(spot / strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.d2(spot / strike, vol, rate, time_to_expiry)
+        return spot * norm.cdf(d1) - strike * df * norm.cdf(d2)
+
     def calc_fair_value(self) -> float:
         direction = self._contract.direction
         strike = self._contract.strike
@@ -562,11 +570,50 @@ class BarrierAnalyticPricer(Pricer):
         updown = self._contract.barrier.up_down
         inout = self._contract.barrier.in_out
 
-        if (self._contract.derivative_type == PutCallFwd.CALL) & (updown == UpDown.DOWN) & (inout == InOut.IN):
-            part1 = spot * (barrier/spot)**(2*rate/vol**2+1) * \
-                    norm.cdf(EuropeanAnalyticPricer.calc_d1(barrier ** 2 / (strike * spot), vol, rate, time_to_expiry))
-            part2 = strike * (barrier/spot)**(2*rate/vol**2-1) * \
-                    norm.cdf(EuropeanAnalyticPricer.calc_d2(barrier ** 2 / (strike * spot), vol, rate, time_to_expiry))
-            return direction * (part1 - df * part2)
+        if self._contract.get_type() == PutCallFwd.CALL:
+            if updown == UpDown.DOWN:
+                if inout == InOut.IN:
+                    return direction * spot * (barrier / spot) ** (2 * rate / vol **2) * \
+                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
+                if inout == InOut.OUT:
+                    price_bs = BarrierAnalyticPricer.bs_call(spot, strike, vol, rate, time_to_expiry, df)
+                    price_dic = direction * spot * (barrier / spot) ** (2 * rate / vol ** 2) * \
+                        BarrierAnalyticPricer.bs_call(barrier / spot, strike / barrier, vol, rate, time_to_expiry, df)
+                    return price_bs - price_dic
         else:
             self.raise_pricer_not_implemented_error()
+ 
+
+class BarrierBrownianBridgePricer(Pricer):
+    def __init__(self, contract: EuropeanBarrierContract, model: MarketModel, params: Params):
+        if not isinstance(contract, EuropeanBarrierContract):
+            raise TypeError(f'Contract must be of type EuropeanBarrierContract but received {type(contract).__name__}')
+        super().__init__(contract, model, params)
+
+        if isinstance(model, FlatVolModel):
+            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
+        else:
+            raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
+
+    def calc_fair_value(self) -> float:
+            contract = self._contract
+            # num_mon_mod = round(contract._num_mon / 10)    # BB specific
+            num_mon_mod = contract._num_mon
+            contract.set_num_mon(num_mon_mod)
+            contractual_timeline = contract.get_timeline()
+            spot_paths = self._mc_method.simulate_spot_paths()
+            num_of_paths = self._params.num_of_paths
+            contract.set_vol(self._model.get_vol(contract._strike, contract._expiry))   # BB specific
+            path_payoff = np.empty(num_of_paths)
+            for path in range(num_of_paths):
+                fixing_schedule = dict(zip([0] + contractual_timeline,
+                                           np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
+                path_payoff[path] = contract.payoff(fixing_schedule)
+            maturity = contract.get_expiry()
+            fv = mean(path_payoff) * self._model.get_df(maturity)
+            fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
+                          * self._model.get_df(maturity) for mult in [-1, 1]]
+            return fv, fv_contint
+
+
+
