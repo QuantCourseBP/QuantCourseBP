@@ -39,6 +39,9 @@ class Contract(ABC):
             'observations': self.num_mon
         }
 
+    def set_num_mon(self, num_mon) -> list[float]:       # used by BB Barrier pricer
+        self.num_mon = num_mon
+
     @abstractmethod
     def get_timeline(self) -> list[float]:
         pass
@@ -181,13 +184,13 @@ class EuropeanBarrierContract(Contract):
     def get_timeline(self) -> list[float]:
         return [round(((i+1) / self.num_mon) * self.expiry, self.timeline_digits) for i in range(self.num_mon)]
 
-    def payoff(self, spot: dict[float, float]) -> float:
+    def payoff(self, spot: dict[float, float], vol: float = -1) -> float:
         timeline = self.get_timeline()
         if not set(timeline).issubset(set(spot.keys())):
             self.raise_missing_spot_error(list(spot.keys()))
         obs = [spot[t] for t in timeline]
-        in_out = self._barrier.get_in_out()
-        is_breached = self._barrier.is_breached(spot, self._vol)
+        in_out = self.barrier.in_out
+        is_breached = self.barrier.is_breached(spot, vol)
 
         mult = float(int(in_out == InOut.IN) * is_breached + int(in_out == InOut.OUT) * (1 - is_breached))
         if self.derivative_type == PutCallFwd.CALL:
@@ -208,30 +211,21 @@ class Barrier:
             self.raise_incorrect_in_out_type()
         self.in_out: InOut = in_out
 
-    def get_barrier_level(self) -> float:
-        return self._barrier_level
-
-    def get_up_down(self) -> UpDown:
-        return self._up_down
-
-    def get_in_out(self) -> InOut:
-        return self._in_out
-
-    def is_breached(self, spot: dict[float, float], vol: float = -1) -> float:
+    def is_breached(self, spot: dict[float, float], vol: float) -> float:
         timeline = list(spot.keys())
         observations = [spot[t] for t in timeline]
-        if vol == -1:
-            if self._up_down == UpDown.UP:
-                return float(any([self._barrier_level <= price for price in observations]))
-            elif self._up_down == UpDown.DOWN:
-                return float(any([self._barrier_level >= price for price in observations]))
+        if vol == -1:      # standard case without probabilities
+            if self.up_down == UpDown.UP:
+                return float(any([self.barrier_level <= price for price in observations]))
+            elif self.up_down == UpDown.DOWN:
+                return float(any([self.barrier_level >= price for price in observations]))
             else:
                 self._raise_incorrect_up_down_type()
         else:
             probs_no_breach = []
             for i in range(len(timeline)-1):
-                prob = prob_breach_barrier_segment(self._barrier_level, vol, timeline[i], timeline[i+1],
-                                                   observations[i], observations[i+1], self._up_down)
+                prob = prob_breach_barrier_segment(self.barrier_level, vol, timeline[i], timeline[i+1],
+                                                   observations[i], observations[i+1], self.up_down)
                 probs_no_breach.append(1-prob)
             return 1 - np.prod(probs_no_breach)
 
