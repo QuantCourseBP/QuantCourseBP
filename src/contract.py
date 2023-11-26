@@ -184,7 +184,7 @@ class EuropeanBarrierContract(Contract):
     def get_timeline(self) -> list[float]:
         return [round(((i+1) / self.num_mon) * self.expiry, self.timeline_digits) for i in range(self.num_mon)]
 
-    def payoff(self, spot: dict[float, float], vol: float = -1) -> float:
+    def payoff(self, spot: dict[float, float], vol: float = np.nan) -> float:
         timeline = self.get_timeline()
         if not set(timeline).issubset(set(spot.keys())):
             self.raise_missing_spot_error(list(spot.keys()))
@@ -214,7 +214,7 @@ class Barrier:
     def is_breached(self, spot: dict[float, float], vol: float) -> float:
         timeline = list(spot.keys())
         observations = [spot[t] for t in timeline]
-        if vol == -1:      # standard case without probabilities
+        if np.isnan(vol):      # standard case without probabilities
             if self.up_down == UpDown.UP:
                 return float(any([self.barrier_level <= price for price in observations]))
             elif self.up_down == UpDown.DOWN:

@@ -590,13 +590,15 @@ class BarrierBrownianBridgePricer(Pricer):
 
         if isinstance(model, FlatVolModel):
             self.mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
+        elif isinstance(model, BSVolModel):
+            self.mc_method = MCMethodBS(self.contract, self.model, self.params)
         else:
             raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
 
     def calc_fair_value_with_ci(self) -> float:
             contract = self.contract
-            num_mon_mod = round(contract.num_mon / 10)    # BB specific
-            # num_mon_mod = contract.num_mon
+            # num_mon_mod = round(contract.num_mon / 10)    # BB specific
+            num_mon_mod = contract.num_mon
             contract.set_num_mon(num_mon_mod)
             contractual_timeline = contract.get_timeline()
             spot_paths = self.mc_method.simulate_spot_paths()
@@ -608,9 +610,9 @@ class BarrierBrownianBridgePricer(Pricer):
                                            np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
                 path_payoff[path] = contract.payoff(fixing_schedule, vol)
             maturity = contract.expiry
-            fv = mean(path_payoff) * self.model.get_df(maturity)
+            fv = mean(path_payoff) * self.model.calc_df(maturity)
             fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
-                          * self.model.get_df(maturity) for mult in [-1, 1]]
+                          * self.model.calc_df(maturity) for mult in [-1, 1]]
             return fv, fv_contint
 
     def calc_fair_value(self) -> float:
