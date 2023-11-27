@@ -39,9 +39,6 @@ class Contract(ABC):
             'observations': self.num_mon
         }
 
-    def set_num_mon(self, num_mon) -> list[float]:       # used by BB Barrier pricer
-        self.num_mon = num_mon
-
     @abstractmethod
     def get_timeline(self) -> list[float]:
         pass
@@ -220,7 +217,7 @@ class Barrier:
             elif self.up_down == UpDown.DOWN:
                 return float(any([self.barrier_level >= price for price in observations]))
             else:
-                self._raise_incorrect_up_down_type()
+                self.raise_incorrect_up_down_type()
         else:
             probs_no_breach = []
             for i in range(len(timeline)-1):
@@ -230,8 +227,8 @@ class Barrier:
             return 1 - np.prod(probs_no_breach)
 
 
-    def _raise_incorrect_up_down_type(self):
+    def raise_incorrect_up_down_type(self):
         raise TypeError(f'Updown parameter of {type(self).__name__} must be UP or DOWN')
 
-    def _raise_incorrect_in_out_type(self):
+    def raise_incorrect_in_out_type(self):
         raise TypeError(f'Inout parameter of {type(self).__name__} must be IN or OUT')

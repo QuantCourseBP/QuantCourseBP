@@ -597,9 +597,6 @@ class BarrierBrownianBridgePricer(Pricer):
 
     def calc_fair_value_with_ci(self) -> float:
             contract = self.contract
-            # num_mon_mod = round(contract.num_mon / 10)    # BB specific
-            num_mon_mod = contract.num_mon
-            contract.set_num_mon(num_mon_mod)
             contractual_timeline = contract.get_timeline()
             spot_paths = self.mc_method.simulate_spot_paths()
             num_of_paths = self.params.num_of_paths
