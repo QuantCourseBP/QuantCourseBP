@@ -9,8 +9,6 @@ from src.contract import *
 from src.model import *
 from src.numerical_method import *
 
-maci = 12
-
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
     valuation_time: float = 0.0
@@ -553,24 +551,24 @@ class BarrierAnalyticPricer(Pricer):
 
     @staticmethod
     def bs_call(spot: float, strike: float, vol: float, rate: float, time_to_expiry: float, df: float) -> float:
-        d1 = EuropeanAnalyticPricer.d1(spot / strike, vol, rate, time_to_expiry)
-        d2 = EuropeanAnalyticPricer.d2(spot / strike, vol, rate, time_to_expiry)
+        d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
         return spot * norm.cdf(d1) - strike * df * norm.cdf(d2)
 
     def calc_fair_value(self) -> float:
-        direction = self._contract.direction
-        strike = self._contract.strike
-        expiry = self._contract.expiry
+        direction = self.contract.direction
+        strike = self.contract.strike
+        expiry = self.contract.expiry
         time_to_expiry = expiry - self.valuation_time
         spot = self.model.spot
         vol = self.model.get_vol(strike, expiry)
         rate = self.model.risk_free_rate
         df = self.model.calc_df(time_to_expiry)
-        barrier = self._contract.barrier.barrier_level
-        updown = self._contract.barrier.up_down
-        inout = self._contract.barrier.in_out
+        barrier = self.contract.barrier.barrier_level
+        updown = self.contract.barrier.up_down
+        inout = self.contract.barrier.in_out
 
-        if self._contract.get_type() == PutCallFwd.CALL:
+        if self.contract.derivative_type == PutCallFwd.CALL:
             if updown == UpDown.DOWN:
                 if inout == InOut.IN:
                     return direction * spot * (barrier / spot) ** (2 * rate / vol **2) * \
@@ -591,29 +589,31 @@ class BarrierBrownianBridgePricer(Pricer):
         super().__init__(contract, model, params)
 
         if isinstance(model, FlatVolModel):
-            self._mc_method = MCMethodFlatVol(self._contract, self._model, self._params)
+            self.mc_method = MCMethodFlatVol(self.contract, self.model, self.params)
+        elif isinstance(model, BSVolModel):
+            self.mc_method = MCMethodBS(self.contract, self.model, self.params)
         else:
             raise TypeError(f'MC is not supported for model type {type(contract).__name__}')
 
-    def calc_fair_value(self) -> float:
-            contract = self._contract
-            # num_mon_mod = round(contract._num_mon / 10)    # BB specific
-            num_mon_mod = contract._num_mon
-            contract.set_num_mon(num_mon_mod)
+    def calc_fair_value_with_ci(self) -> float:
+            contract = self.contract
             contractual_timeline = contract.get_timeline()
-            spot_paths = self._mc_method.simulate_spot_paths()
-            num_of_paths = self._params.num_of_paths
-            contract.set_vol(self._model.get_vol(contract._strike, contract._expiry))   # BB specific
+            spot_paths = self.mc_method.simulate_spot_paths()
+            num_of_paths = self.params.num_of_paths
+            vol = self.model.get_vol(contract.strike, contract.expiry)
             path_payoff = np.empty(num_of_paths)
             for path in range(num_of_paths):
                 fixing_schedule = dict(zip([0] + contractual_timeline,
-                                           np.concatenate((np.array([self._model.get_spot()]), spot_paths[path, :])) ))
-                path_payoff[path] = contract.payoff(fixing_schedule)
-            maturity = contract.get_expiry()
-            fv = mean(path_payoff) * self._model.get_df(maturity)
+                                           np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
+                path_payoff[path] = contract.payoff(fixing_schedule, vol)
+            maturity = contract.expiry
+            fv = mean(path_payoff) * self.model.calc_df(maturity)
             fv_contint = [(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) / np.sqrt(self.params.num_of_paths))
-                          * self._model.get_df(maturity) for mult in [-1, 1]]
+                          * self.model.calc_df(maturity) for mult in [-1, 1]]
             return fv, fv_contint
+
+    def calc_fair_value(self) -> float:
+        return self.calc_fair_value_with_ci()[0]
 
 
 
