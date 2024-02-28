@@ -232,3 +232,24 @@ class Barrier:
 
     def raise_incorrect_in_out_type(self):
         raise TypeError(f'Inout parameter of {type(self).__name__} must be IN or OUT')
+    
+class DigitalContract(Contract):
+    def __init__(self, underlying: Stock, derivative_type: PutCallFwd, long_short: LongShort, strike: float,
+                 expiry: float) -> None:
+        if derivative_type not in [PutCallFwd.CALL, PutCallFwd.PUT]:
+            self.raise_incorrect_derivative_type_error()
+        super().__init__(underlying, derivative_type, long_short, strike, expiry)
+
+    def get_timeline(self) -> list[float]:
+        return [round(self.expiry, self.timeline_digits)]
+
+    def payoff(self, spot: dict[float, float]) -> float:
+        t = self.get_timeline()[0]
+        if t not in spot.keys():
+            self.raise_missing_spot_error(list(spot.keys()))
+        if self.derivative_type == PutCallFwd.CALL:
+            return self.direction * float(spot[t] > self.strike)
+        elif self.derivative_type == PutCallFwd.PUT:
+            return self.direction * float(spot[t] < self.strike)
+        else:
+            self.raise_incorrect_derivative_type_error()

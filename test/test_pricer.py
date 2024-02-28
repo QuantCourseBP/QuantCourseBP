@@ -175,3 +175,53 @@ class TestEuropeanPDEPricer:
         pricer = EuropeanPDEPricer(self.contract, self.model, param)
         pv = pricer.calc_fair_value()
         assert pv == pytest.approx(expected_pv)
+        
+        
+class TestDigitalAnalyticPricer:
+    und = Stock.TEST_COMPANY
+    expiry = 2.0
+    strike = 0.95 * MarketData.get_spot()[und]
+    model = FlatVolModel(und)
+    params = Params()
+    contract = DigitalContract(und, PutCallFwd.CALL, LongShort.LONG, strike, expiry)
+    pv = 0.5757486974816027
+
+    def test_analytic_pricer(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(self.pv)
+        
+    def test_delta(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        delta = pricer.calc_delta(GreekMethod.ANALYTIC)
+        assert delta == pytest.approx(0.012404947731083135)
+        delta = pricer.calc_delta(GreekMethod.BUMP)
+        assert delta == pytest.approx(0.01122368684372449)
+        
+    def test_gamma(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        gamma = pricer.calc_gamma(GreekMethod.ANALYTIC)
+        assert gamma == pytest.approx(0.0004098889093884842)
+        gamma = pricer.calc_gamma(GreekMethod.BUMP)
+        assert gamma == pytest.approx(-0.0002414597246290784)
+        
+    def test_vega(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        vega = pricer.calc_vega(GreekMethod.ANALYTIC)
+        assert vega == pytest.approx(0.5309317628903581)
+        vega = pricer.calc_vega(GreekMethod.BUMP)
+        assert vega == pytest.approx(0.0)
+        
+    def test_theta(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        theta = pricer.calc_theta(GreekMethod.ANALYTIC)
+        assert theta == pytest.approx(-0.02840484931463416)
+        theta = pricer.calc_theta(GreekMethod.BUMP)
+        assert theta == pytest.approx(0.02798210984419236)
+        
+    def test_rho(self):
+        pricer = DigitalAnalyticPricer(self.contract, self.model, self.params)
+        rho = pricer.calc_rho(GreekMethod.ANALYTIC)
+        assert rho == pytest.approx(1.1514973949632055)
+        rho = pricer.calc_rho(GreekMethod.BUMP)
+        assert rho == pytest.approx(1.0933934150207936)

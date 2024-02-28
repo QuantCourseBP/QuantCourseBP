@@ -4,10 +4,14 @@ import copy
 import math
 import numpy as np
 from scipy.stats import norm
+from src.contract import GreekMethod
 from src.enums import *
 from src.contract import *
+from src.enums import GreekMethod
 from src.model import *
+from src.model import GreekMethod
 from src.numerical_method import *
+from src.numerical_method import GreekMethod
 
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
@@ -616,4 +620,123 @@ class BarrierBrownianBridgePricer(Pricer):
         return self.calc_fair_value_with_ci()[0]
 
 
+class DigitalAnalyticPricer(Pricer):
+    def __init__(self, contract: DigitalContract, model: MarketModel, params: Params):
+        if not isinstance(contract, DigitalContract):
+            raise TypeError(f'Contract must be of type DigitalContract but received {type(contract).__name__}')
+        super().__init__(contract, model, params)
 
+    def calc_fair_value(self) -> float:
+        direction = self.contract.direction
+        strike = self.contract.strike
+        expiry = self.contract.expiry
+        time_to_expiry = expiry - self.valuation_time
+        spot = self.model.spot
+        vol = self.model.get_vol(strike, expiry)
+        rate = self.model.risk_free_rate
+        df = self.model.calc_df(time_to_expiry)
+        d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+        if self.contract.derivative_type == PutCallFwd.CALL:
+            return direction * df * norm.cdf(d2)
+        elif self.contract.derivative_type == PutCallFwd.PUT:
+            return direction * df * norm.cdf(-d2)
+        else:
+            self.contract.raise_incorrect_derivative_type_error()
+    
+    def calc_delta(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            spot = self.model.spot
+            strike = self.contract.strike
+            expiry = self.contract.expiry
+            time_to_expiry = expiry - self.valuation_time
+            vol = self.model.get_vol(strike, expiry)
+            rate = self.model.risk_free_rate
+            d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+            if self.contract.derivative_type == PutCallFwd.CALL:
+                greek = norm.pdf(d2) / (spot * vol * np.sqrt(time_to_expiry))
+            elif self.contract.derivative_type == PutCallFwd.PUT:
+                greek = -norm.pdf(-d2) / (spot * vol * np.sqrt(time_to_expiry))
+            else:
+                self.contract.raise_incorrect_derivative_type_error()
+            return self.contract.direction * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_delta(method)
+        else:
+            self.raise_unsupported_greek_method_error(method)
+            
+    def calc_gamma(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            spot = self.model.spot
+            strike = self.contract.strike
+            expiry = self.contract.expiry
+            time_to_expiry = expiry - self.valuation_time
+            vol = self.model.get_vol(strike, expiry)
+            rate = self.model.risk_free_rate
+            d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+            greek = norm.pdf(d2) / (spot**2 * vol**2 * time_to_expiry)
+            return self.contract.direction * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_gamma(method)
+        else:
+            self.raise_unsupported_greek_method_error(method)
+            
+    def calc_vega(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            spot = self.model.spot
+            strike = self.contract.strike
+            expiry = self.contract.expiry
+            time_to_expiry = expiry - self.valuation_time
+            vol = self.model.get_vol(strike, expiry)
+            rate = self.model.risk_free_rate
+            df = self.model.calc_df(time_to_expiry)
+            d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+            greek = norm.pdf(d2) * np.sqrt(time_to_expiry)
+            return self.contract.direction * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_vega(method)
+        else:
+            self.raise_unsupported_greek_method_error(method)
+            
+    def calc_theta(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            spot = self.model.spot
+            strike = self.contract.strike
+            expiry = self.contract.expiry
+            time_to_expiry = expiry - self.valuation_time
+            vol = self.model.get_vol(strike, expiry)
+            rate = self.model.risk_free_rate
+            df = self.model.calc_df(time_to_expiry)
+            d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+            greek = -1.0 * norm.pdf(d2) * vol / (2 * np.sqrt(time_to_expiry))
+            return self.contract.direction * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_theta(method)
+        else:
+            self.raise_unsupported_greek_method_error(method)   
+            
+    def calc_rho(self, method: GreekMethod) -> float:
+        if method == GreekMethod.ANALYTIC:
+            greek = 0.0
+            strike = self.contract.strike
+            expiry = self.contract.expiry
+            time_to_expiry = expiry - self.valuation_time
+            vol = self.model.get_vol(strike, expiry)
+            rate = self.model.risk_free_rate
+            df = self.model.calc_df(time_to_expiry)
+            d2 = EuropeanAnalyticPricer.calc_d2(self.model.spot / strike, vol, rate, time_to_expiry)
+            if self.contract.derivative_type == PutCallFwd.CALL:
+                greek = time_to_expiry * df * norm.cdf(d2)
+            elif self.contract.derivative_type == PutCallFwd.PUT:
+                greek = time_to_expiry * df * norm.cdf(-d2)
+            else:
+                self.contract.raise_incorrect_derivative_type_error()
+            return self.contract.direction * greek
+        elif method == GreekMethod.BUMP:
+            return super().calc_rho(method)
+        else:
+            self.raise_unsupported_greek_method_error(method)
+            
