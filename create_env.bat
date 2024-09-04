@@ -8,4 +8,6 @@ pip install -r requirements.txt
 python -m pip install --upgrade pip
 :: install jupyter kernel for virtual env
 ipython kernel install --user --name=venv_quant_course_v39
+:: install rise for notebook presentation mode
+jupyter-nbextension install rise --py --sys-prefix
 deactivate
