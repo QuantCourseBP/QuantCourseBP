@@ -116,28 +116,6 @@ class AmericanContract(Contract):
             self.raise_incorrect_derivative_type_error()
 
 
-class EuropeanDigitalContract(Contract):
-    def __init__(self, underlying: Stock, derivative_type: PutCallFwd, long_short: LongShort, strike: float,
-                 expiry: float) -> None:
-        if derivative_type not in [PutCallFwd.CALL, PutCallFwd.PUT]:
-            self.raise_incorrect_derivative_type_error()
-        super().__init__(underlying, derivative_type, long_short, strike, expiry)
-
-    def get_timeline(self) -> list[float]:
-        return [round(self.expiry, self.timeline_digits)]
-
-    def payoff(self, spot: dict[float, float]) -> float:
-        t = self.get_timeline()[0]
-        if t not in spot.keys():
-            self.raise_missing_spot_error(list(spot.keys()))
-        if self.derivative_type == PutCallFwd.CALL:
-            return self.direction * float(spot[t] - self.strike > 0)
-        elif self.derivative_type == PutCallFwd.PUT:
-            return self.direction * float(self.strike - spot[t] > 0)
-        else:
-            self.raise_incorrect_derivative_type_error()
-
-
 class AsianContract(Contract):
     def __init__(self, underlying: Stock, derivative_type: PutCallFwd, long_short: LongShort, strike: float,
                  expiry: float, num_mon: int) -> None:

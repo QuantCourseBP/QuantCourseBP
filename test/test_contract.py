@@ -22,8 +22,6 @@ class TestContractProperties:
             'ForwardContract': [self.underlying, self.long_short, self.strike, self.expiry],
             'EuropeanContract': [self.underlying, self.derivative_type, self.long_short, self.strike, self.expiry],
             'AmericanContract': [self.underlying, self.derivative_type, self.long_short, self.strike, self.expiry],
-            'EuropeanDigitalContract': [self.underlying, self.derivative_type, self.long_short, self.strike,
-                                        self.expiry],
             'EuropeanBarrierContract': [self.underlying, self.derivative_type, self.long_short, self.strike,
                                         12, self.expiry, 1.05 * self.ref_spot, UpDown.UP, InOut.OUT],
             'AsianContract': [self.underlying, self.derivative_type, self.long_short, self.strike, self.expiry, 12],
