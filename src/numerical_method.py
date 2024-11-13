@@ -51,54 +51,27 @@ class MCMethod(NumericalMethod):
         return rnd
 
     def simulate_spot_paths(self) -> np.ndarray:
-        pass
+        tenors = self.find_simulation_tenors()
+        num_of_paths = self.params.num_of_paths
+        num_of_tenors = len(tenors)
+        spot_paths = np.zeros(shape=(num_of_paths, num_of_tenors))
+        rnd = self.generate_std_norm(num_of_tenors)
+        s_0 = self.model.spot
+        contract_tenors = self.contract.get_timeline()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # tenors = self.find_simulation_tenors()
-        # num_of_paths = self.params.num_of_paths
-        # num_of_tenors = len(tenors)
-        # spot_paths = np.zeros(shape=(num_of_paths, num_of_tenors))
-        # rnd = self.generate_std_norm(num_of_tenors)
-        # s_0 = self.model.spot
-        # contract_tenors = self.contract.get_timeline()
-        #
-        # for path in range(num_of_paths):
-        #     for time_index in range(num_of_tenors):
-        #         if time_index == 0:
-        #             spot_paths[path, time_index] = s_0
-        #         else:
-        #             t_from = tenors[time_index-1]
-        #             t_to = tenors[time_index]
-        #             spot_from = spot_paths[path, time_index-1]
-        #             z=rnd[path, time_index-1]
-        #             spot_to = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
-        #             spot_paths[path, time_index] = spot_to
-        # contract_tenor_idx = [idx for idx in range(num_of_tenors) if tenors[idx] in contract_tenors]
-        # return spot_paths[:, contract_tenor_idx]
+        for path in range(num_of_paths):
+            for time_index in range(num_of_tenors):
+                if time_index == 0:
+                    spot_paths[path, time_index] = s_0
+                else:
+                    t_from = tenors[time_index-1]
+                    t_to = tenors[time_index]
+                    spot_from = spot_paths[path, time_index-1]
+                    z=rnd[path, time_index-1]
+                    spot_to = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
+                    spot_paths[path, time_index] = spot_to
+        contract_tenor_idx = [idx for idx in range(num_of_tenors) if tenors[idx] in contract_tenors]
+        return spot_paths[:, contract_tenor_idx]
 
     @abstractmethod
     def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
@@ -114,35 +87,12 @@ class MCMethodFlatVol(MCMethod):
         rate = self.model.risk_free_rate
         dt = t_to - t_from
         if self.params.evolve_spot_method == MCNumMethod.EXACT:
-            pass
+            new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
         elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
         else:
             raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
 
 
 class MCMethodBS(MCMethod):

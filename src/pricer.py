@@ -463,41 +463,81 @@ class GenericMCPricer(Pricer):
             raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
-        contract = self.contract
-        contractual_timeline = contract.get_timeline()
-        spot_paths = self.mc_method.simulate_spot_paths()
-        num_of_paths = self.params.num_of_paths
-        path_payoff = np.empty(num_of_paths)
-        for path in range(num_of_paths):
-            fixing_schedule = dict(zip([0] + contractual_timeline,
-                                        np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
-            path_payoff[path] = contract.payoff(fixing_schedule)
-        maturity = contract.expiry
-        if self.params.control_variate:
-            # adjust path_payoff inplace
-            self.apply_control_var_adj(path_payoff, spot_paths)
-        fv = mean(path_payoff) * self.model.calc_df(maturity)
-        fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
-                                   np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
-                                  for mult in [-1, 1]])
-        return fv, fv_conf_interval
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # contract = self.contract
+        # contractual_timeline = contract.get_timeline()
+        # spot_paths = self.mc_method.simulate_spot_paths()
+        # num_of_paths = self.params.num_of_paths
+        # path_payoff = np.empty(num_of_paths)
+        # for path in range(num_of_paths):
+        #     fixing_schedule = dict(zip([0] + contractual_timeline,
+        #                                 np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
+        #     path_payoff[path] = contract.payoff(fixing_schedule)
+        # maturity = contract.expiry
+        # if self.params.control_variate:
+        #     # adjust path_payoff inplace
+        #     self.apply_control_var_adj(path_payoff, spot_paths)
+        # fv = mean(path_payoff) * self.model.calc_df(maturity)
+        # fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
+        #                            np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
+        #                           for mult in [-1, 1]])
+        # return fv, fv_conf_interval
 
     def calc_fair_value(self) -> float:
         return self.calc_fair_value_with_ci()[0]
 
     def apply_control_var_adj(self, path_payoff, spot_paths) -> None:
-        pricer_cv = self.get_controlvar_helper_pricer(self.contract)
-        contract_cv = pricer_cv.contract
-        num_of_path = len(path_payoff)
-        path_payoff_cv = np.empty(num_of_path)
-        for path in range(num_of_path):
-            fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
-            path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
-        cov = np.cov(path_payoff, path_payoff_cv)
-        b = cov[0][1]/cov[1][1]
-        contract_cv_mean = pricer_cv.calc_fair_value() / self.model.calc_df(contract_cv.expiry)
-        for i in range(num_of_path):
-            path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # pricer_cv = self.get_controlvar_helper_pricer(self.contract)
+        # contract_cv = pricer_cv.contract
+        # num_of_path = len(path_payoff)
+        # path_payoff_cv = np.empty(num_of_path)
+        # for path in range(num_of_path):
+        #     fixing_schedule = dict(zip(contract_cv.get_timeline(), spot_paths[path, :]))
+        #     path_payoff_cv[path] = contract_cv.payoff(fixing_schedule)
+        # cov = np.cov(path_payoff, path_payoff_cv)
+        # b = cov[0][1]/cov[1][1]
+        # contract_cv_mean = pricer_cv.calc_fair_value() / self.model.calc_df(contract_cv.expiry)
+        # for i in range(num_of_path):
+        #     path_payoff[i] = path_payoff[i] - b * (path_payoff_cv[i] - contract_cv_mean)
 
     def get_controlvar_helper_pricer(self, contract: Contract) -> Pricer:
         if isinstance(contract, EuropeanContract):
