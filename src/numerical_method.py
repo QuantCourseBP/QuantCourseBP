@@ -67,7 +67,7 @@ class MCMethod(NumericalMethod):
                     t_from = tenors[time_index-1]
                     t_to = tenors[time_index]
                     spot_from = spot_paths[path, time_index-1]
-                    z=rnd[path, time_index-1]
+                    z=rnd[path,time_index-1]
                     spot_to = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
                     spot_paths[path, time_index] = spot_to
         contract_tenor_idx = [idx for idx in range(num_of_tenors) if tenors[idx] in contract_tenors]
