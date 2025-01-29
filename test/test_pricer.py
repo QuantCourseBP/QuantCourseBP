@@ -175,3 +175,32 @@ class TestEuropeanPDEPricer:
         pricer = EuropeanPDEPricer(self.contract, self.model, param)
         pv = pricer.calc_fair_value()
         assert pv == pytest.approx(expected_pv)
+
+
+class TestAsianPricer:
+    und = Stock.TEST_COMPANY
+    model = BSVolModel(und)
+    spot = model.spot
+    exp = 1
+    num_mon = 100
+    moneyness_list = [i / 10 for i in range(7, 14)]
+    pvs = [31.05527716868351, 22.010208533350703, 14.092967347218911, 8.055655385255257, 4.114116236896775,
+           1.8952610528938865, 0.7982257390694725]
+    method = GreekMethod.BUMP
+    gammas = [0.00173634060894301, 0.007193813056463938, 0.01565368467101358, 0.02149612527253897,
+             0.021052529737006775, 0.016001929107746227, 0.010026197274399684]
+
+    @pytest.mark.parametrize('moneyness, expected_pv', zip(moneyness_list, pvs))
+    def test_asian_pricer_pv(self, moneyness, expected_pv):
+        contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp, self.num_mon)
+        pricer = AsianMomentMatchingPricer(contract, self.model, Params())
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(expected_pv)
+
+    @pytest.mark.parametrize('moneyness, expected_gamma', zip(moneyness_list, gammas))
+    def test_asian_pricer_gamma(self, moneyness, expected_gamma):
+        contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp, self.num_mon)
+        pricer = AsianMomentMatchingPricer(contract, self.model, Params())
+        pv = pricer.calc_gamma(self.method)
+        assert pv == pytest.approx(expected_gamma)
+
