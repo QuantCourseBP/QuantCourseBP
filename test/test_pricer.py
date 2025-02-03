@@ -190,17 +190,61 @@ class TestAsianPricer:
     gammas = [0.00173634060894301, 0.007193813056463938, 0.01565368467101358, 0.02149612527253897,
              0.021052529737006775, 0.016001929107746227, 0.010026197274399684]
 
-    @pytest.mark.parametrize('moneyness, expected_pv', zip(moneyness_list, pvs))
-    def test_asian_pricer_pv(self, moneyness, expected_pv):
+    @pytest.mark.parametrize('moneyness, expected_pv, expected_gamma', zip(moneyness_list, pvs, gammas))
+    def test_asian_pricer(self, moneyness, expected_pv, expected_gamma):
         contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp, self.num_mon)
         pricer = AsianMomentMatchingPricer(contract, self.model, Params())
         pv = pricer.calc_fair_value()
         assert pv == pytest.approx(expected_pv)
+        gamma = pricer.calc_gamma(self.method)
+        assert gamma == pytest.approx(expected_gamma)
 
-    @pytest.mark.parametrize('moneyness, expected_gamma', zip(moneyness_list, gammas))
-    def test_asian_pricer_gamma(self, moneyness, expected_gamma):
-        contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp, self.num_mon)
-        pricer = AsianMomentMatchingPricer(contract, self.model, Params())
-        pv = pricer.calc_gamma(self.method)
-        assert pv == pytest.approx(expected_gamma)
+
+class TestBarrierPricer:
+    und = Stock.TEST_COMPANY
+    model = BSVolModel(und)
+    spot = model.spot
+    exp = 1
+    num_mon = 100
+    barrier = 90
+    up_down = UpDown.DOWN
+    in_out = InOut.IN
+    moneyness_list = [i / 10 for i in range(7, 14)]
+    pvs = [17.590846234380994, 11.87723169824169, 7.704228407261273, 4.838479479055546, 2.963276479066368,
+           1.7806959944654814, 1.0552699267786232]
+    method = GreekMethod.BUMP
+    gammas = [0.021967522460151656, 0.02151691105424014, 0.019387672150170232, 0.016169753179283042,
+              0.012638449622107917, 0.00937559239729513, 0.006674222683586084]
+    params_MC = MCParams(seed=1, num_of_path=10, tenor_frequency=1)
+    pvs_mc = [(21.085478746034322, 10.046055843189333, 32.124901648879316),
+              (14.426872774529325, 5.560535431385187, 23.29321011767346),
+              (8.30405270019804, 1.4721102345162524, 15.135995165879828),
+              (4.238539511857375, -0.047198181906164836, 8.524277205620917),
+              (1.182238374471723, -1.016145787933318, 3.380622536876764),
+              (0.17522259572646742, -0.16821369189740873, 0.5186588833503436),
+              (0.0, 0.0, 0.0)]
+
+    @pytest.mark.parametrize('moneyness, expected_pv, expected_gamma', zip(moneyness_list, pvs, gammas))
+    def test_barrier_analytic_pricer(self, moneyness, expected_pv, expected_gamma):
+        contract = EuropeanBarrierContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp,
+                                           self.num_mon, self.barrier, self.up_down, self.in_out)
+        pricer = BarrierAnalyticPricer(contract, self.model, Params())
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(expected_pv)
+        gamma = pricer.calc_gamma(self.method)
+        assert gamma == pytest.approx(expected_gamma)
+
+    @pytest.mark.parametrize('moneyness, expected_pv', zip(moneyness_list, pvs_mc))
+    def test_barrier_MC_pricer(self, moneyness, expected_pv):
+        contract = EuropeanBarrierContract(self.und, PutCallFwd.CALL, LongShort.LONG, self.spot * moneyness, self.exp,
+                                           self.num_mon, self.barrier, self.up_down, self.in_out)
+        pricer = GenericMCPricer(contract, self.model, self.params_MC)
+        pv = pricer.calc_fair_value_with_ci()
+        assert pv[0] == pytest.approx(expected_pv[0])
+        for i in range(1):
+            assert pv[1][i] == pytest.approx(expected_pv[i+1])
+
+
+
+
 
