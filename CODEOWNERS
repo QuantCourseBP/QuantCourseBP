@@ -3,3 +3,6 @@
 
 # Owners of documentation
 /docs/    @samyfarha
+*.md    @samyfarha
+
+# last matching pattern make precedence (next matchings would be ignored)
