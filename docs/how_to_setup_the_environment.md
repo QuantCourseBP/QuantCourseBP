@@ -5,18 +5,18 @@
 *Table of content*:
 
 * [Setup your own workspace](#setup-your-own-workspace)
-    * [How to setup Git?](#how-to-setup-git)
-        * [How to setup SSH](#how-to-setup-ssh)
-        * [Cloning our repository](#cloning-our-repository)
-    * [How to setup the Python environment?](#how-to-setup-the-python-environment)
-        * [Create our virtual env](#create-our-virtual-env)
+* [How to setup Git?](#how-to-setup-git)
+    * [How to setup SSH](#how-to-setup-ssh)
+    * [Cloning our repository](#cloning-our-repository)
+* [How to setup the Python environment?](#how-to-setup-the-python-environment)
+    * [Create our virtual env](#create-our-virtual-env)
 * [Trouble-shooting](#trouble-shooting)
 
 ---
 
 <br>
 
-# Setup your own workspace
+## Setup your own workspace
 
 First of all, we need three installation: Python as an engine, PyCharm as an IDE (integrated development environment) for Python, and Git for version tracking. After all this setup, you'll be able to checkout our code repository to start your journey!
 1. **Python**: we use Python 3.9 
@@ -32,7 +32,11 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
         * On page _Choosing the default editor used by Git_: select Notepad or Notepad++ (if you have it). We only recommend to use the default editor Vim, if you already know how to use it, otherwise it is pretty hard to learn. (it is quite an ancient editor, 30+ years old)
         * On page _Adjusting your PATH environment_: select 'Git from the command line and also from 3rd-party software', this will allow you to use Windows Command Prompt besides Git Bash (it is recommended for those who are more familiar with Windows, and would use Ctrl-C/Ctrl-V and Windows commands).
 
+<br>
+
 ## How to setup Git?
+
+<br>
 
 ### How to setup SSH
 
@@ -70,6 +74,7 @@ To add the new key to your Github account, do the following:
         <img src="_images/ssh_github3.png" width="700">
     </details>
 
+<br>
 
 ### Cloning our repository
 
@@ -95,6 +100,8 @@ After cloning, let's setup your user information. Navigate to your new Git repos
 ```
 <img src="_images/git_config1.png" width="600">
 
+<br><br>
+
 ## How to setup the Python environment?
 
 Before proceeding to the environment setup, make sure you can access the `python` script from the command line. Navigate to your new QuantCourseBP git repository in command line, and type in 'python'. It should start your Python engine (with the recommended version), which is actually a Python console where you can evaluate simple commands and calculations. Run `exit()` or `quit()` to return to command line.
@@ -103,6 +110,7 @@ If you have multiple Python versions, ....
 
 <img src="_images/check_python.png" width="500">
 
+<br>
 
 ### Create our virtual env
 
@@ -126,7 +134,7 @@ You are done with the env setup! :blush:
 
 <br>
 
-# Trouble-shooting
+## Trouble-shooting
 
 * `fatal: Could not read from remote repository.` <br>
 This is a sign that your SSH is not setup correctly, because GitHub cannot authenticate you. <br>
