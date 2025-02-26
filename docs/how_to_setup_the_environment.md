@@ -57,17 +57,17 @@ To add the new key to your Github account, do the following:
 1. Go to Settings > SSH and GPG keys (in Access section) <br>
     <details>
     <summary> Picture </summary>
-        <img src="_images/ssh_github1.png" width="250">
+        <img src="_images/ssh_github1.png" width="350">
     </details>
 2. Click on 'New SSH key' button, and copy the content of your .ssh/id_ed25519.pub file as a key <br>
     <details>
     <summary> Picture </summary>
-        <img src="_images/ssh_github2.png" width="500">
+        <img src="_images/ssh_github2.png" width="600">
     </details>
 3. Then click 'Add SSH key', which will ask you to identify yourself. Then you'll see your new key in the 'SSH keys' section. <br>
     <details>
     <summary> Picture </summary>
-        <img src="_images/ssh_github3.png" width="600">
+        <img src="_images/ssh_github3.png" width="700">
     </details>
 
 
@@ -76,16 +76,16 @@ To add the new key to your Github account, do the following:
 `git clone` is used to get a local copy of our remote repository.
 
 1. Go to the opening page of our repository, where you'll see the source code of our `master` branch. Click on '<> Code' button <br>
-    <img src="_images/repo_clone1.png" width="500">
+    <img src="_images/repo_clone1.png" width="600">
 2. Choose 'SSH' from cloning options, and copy the path from there. <br>
-    <img src="_images/repo_clone2.png" width="200">
+    <img src="_images/repo_clone2.png" width="300">
 3. Open a command line and navigate to the place where you would like to setup your repo e.g. `C:\Git` for Windows. <br>
    Few useful commands that you can use in the prompt (check `cd` which helps you to navigate into your desired location):
     * for Windows Command line [here](https://www.digitalcitizen.life/command-prompt-how-use-basic-commands/) (other way to open a command prompt is to navigate to the folder in File explorer, click into the Address bar, type `cmd` and hit `ENTER`) <br>
-        <img src="_images/repo_clone3.png" width="500">
+        <img src="_images/repo_clone3.png" width="600">
     * for Unix shell [here](https://mally.stanford.edu/~sr/computing/basic-unix.html)
 4. Make the `git clone` command. If you connect to this repo for the first time, you'll need to confirm that you want to connect to the GitHub host. After that, GitHub will be added to your SSH config as a known host. <br>
-   <img src="_images/repo_clone4.png" width="400"> 
+   <img src="_images/repo_clone4.png" width="500"> 
 
 
 After cloning, let's setup your user information. Navigate to your new Git repository in command line, and run the following two commands. This will setup a global gitconfig under your user profile, and add these info.
@@ -93,7 +93,7 @@ After cloning, let's setup your user information. Navigate to your new Git repos
     git config --global user.email "you@example.com"
     git config --global user.name "Your Name"
 ```
-<img src="_images/git_config1.png" width="500">
+<img src="_images/git_config1.png" width="600">
 
 ## How to setup the Python environment?
 
@@ -101,24 +101,24 @@ Before proceeding to the environment setup, make sure you can access the `python
 
 If you have multiple Python versions, ....
 
-<img src="_images/check_python.png" width="400">
+<img src="_images/check_python.png" width="500">
 
 
 ### Create our virtual env
 
 In the root of your new local repository, you'll find a script called `create_env.bat` which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v39` which contains the build Python core and packages.
 
-<img src="_images/create_env_bat.png" width="400">
+<img src="_images/create_env_bat.png" width="500">
 
 To activate the new virtual and and start Jupyter, simply run ´start_jupyter.bat´ on the root.
 
 Because of incompatibility issues, we keep using to old Jupyter notebook, but this brings up a warning each time you start the environment. Please, ignore this warning and don't update the Notebook 7.
 
-<img src="_images/jupyter1.png" width="500">
+<img src="_images/jupyter1.png" width="600">
 
 When you open a Jupyter Notebook from your virtual env, and Jupyter asks to specify a kernel, select the one that the batch created for you.
 
-<img src="_images/jupyter2.png" width="400">
+<img src="_images/jupyter2.png" width="500">
 
 <br><br><br>
 
@@ -130,7 +130,7 @@ You are done with the env setup! :blush:
 
 * `fatal: Could not read from remote repository.` <br>
 This is a sign that your SSH is not setup correctly, because GitHub cannot authenticate you. <br>
-    <img src="_images/error_could_not_read_remote.png" width="350">
+    <img src="_images/error_could_not_read_remote.png" width="450">
 
 <br>
 
