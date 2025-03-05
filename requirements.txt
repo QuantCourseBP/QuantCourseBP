@@ -6,3 +6,5 @@ matplotlib==3.8.0
 notebook==6.5.5
 traitlets==5.9.0
 rise==5.7.1
+GitPython==2.1.8
+gitdb2==2.0.6

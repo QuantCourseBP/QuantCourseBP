@@ -4,4 +4,3 @@ call .\venv_quant_course_v39\Scripts\activate
 jupyter-nbextension enable rise --py --sys-prefix
 :: start jupyter
 jupyter notebook
-
