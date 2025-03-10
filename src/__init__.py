@@ -5,6 +5,7 @@ from pathlib import Path
 package_location = Path(__file__).parent.parent.resolve()
 package_root = os.path.dirname(__file__)
 
+HOMEWORK_DIR = 'homeworks'
 
 GIT_DATA = {}
 
@@ -18,8 +19,7 @@ def _set_git_data():
         GIT_DATA['branch'] = this_repo.active_branch.name
     except:
         GIT_DATA['branch'] = 'detached_' + this_repo.head.object.hexsha
-    
-    
+
     quantc_hash = this_repo.commit().hexsha
     quantc_dirty = '*' if this_repo.is_dirty(untracked_files=True) else ''
     
