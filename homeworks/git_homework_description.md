@@ -6,8 +6,8 @@ Check the [Git User Guide](../docs/how_to_use_git.md) for details on the command
    (Check `git checkout` command for details on the branch creation.) <br>
     *E.g. 20250314_qwertya__git_homework*
 
-2. Add your **course id** to 'my_config.json' before you run the following script.
-3. Run 'git_homework.py' script <br>
+2. Add your **course id** to 'my_config.json' (in 'homeworks' folder) before you run the following script.
+3. Run 'git_homework.py' script on the root.<br>
    * Either using `run_script.bat` on the root by feeding the script name. After navigating in command line to the root
      of our repo, run:
         > run_script.bat git_homework.py
