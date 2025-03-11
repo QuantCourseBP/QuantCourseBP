@@ -1,8 +1,8 @@
 # How to submit your git homework?
 
-Check the [Git User Guide](../docs/how_to_use_git.md) for details on the command if you need.
+Check the [Git User Guide](../docs/how_to_use_git.md) for details on the commands if you need.
 
-1. Create a new branch for yourself which contains first the **date** when you create it and then your **course id**. <br>
+1. Create a new branch for yourself with a name containing first the **date** when you create it and then your **course id**. <br>
    (Check `git checkout` command for details on the branch creation.) <br>
     *E.g. 20250314_qwertya__git_homework*
 
