@@ -58,8 +58,13 @@ class ForwardAnalyticPricer(Pricer):
         super().__init__(contract, model, params)
 
     def calc_fair_value(self) -> float:
+        direction = self.contract.direction
+        spot = self.model.spot
+        strike = self.contract.strike
+        time_to_expiry = self.contract.expiry - self.valuation_time
+        df = self.model.calc_df(time_to_expiry)
         if self.contract.derivative_type == PutCallFwd.FWD:
-            raise NotImplementedError('Fair value calculation is not implemented')
+            return direction * (spot - strike * df)
         else:
             self.contract.raise_incorrect_derivative_type_error(self.supported_deriv_type)
 
@@ -112,6 +117,16 @@ class EuropeanAnalyticPricer(Pricer):
         super().__init__(contract, model, params)
 
     def calc_fair_value(self) -> float:
+        # direction =
+        # strike =
+        # expiry =
+        # time_to_expiry =
+        # spot =
+        # vol =
+        # rate =
+        # df =
+        # d1 =
+        # d2 =
         if self.contract.derivative_type == PutCallFwd.CALL:
             raise NotImplementedError('Fair value calculation is not implemented for Call')
         elif self.contract.derivative_type == PutCallFwd.PUT:

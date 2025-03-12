@@ -7,8 +7,7 @@ from model import *
 
 
 # TASK:
-# 1. Implement calc_fair_value() method in ForwardAnalyticPricer.
-# 2. Implement calc_fair_value() method in EuropeanAnalyticPricer.
+# 1. Implement calc_fair_value() method in EuropeanAnalyticPricer.
 
 
 class Params:
