@@ -1,4 +1,5 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod 
 from src.enums import *
 
 
@@ -7,7 +8,7 @@ from src.enums import *
 # 2. Make it compulsory to implement these methods for future enhancements
 
 
-class Contract:
+class Contract(ABC):
     timeline_digits: int = 6
 
     def __init__(self, underlying: Stock, derivative_type: PutCallFwd, long_short: LongShort, strike: float,
@@ -34,6 +35,7 @@ class Contract:
     def get_timeline(self) -> list[float]:
         pass
 
+    @abstractmethod
     def payoff(self, spot: dict[float, float]) -> float:
         pass
 
@@ -54,6 +56,13 @@ class ForwardContract(Contract):
 
     def get_timeline(self) -> list[float]:
         return [round(self.expiry, self.timeline_digits)]
+    
+    def payoff(self, spot) -> float:
+        t = self.get_timeline()[0]
+        if t not in spot.keys():
+            self.raise_missing_spot_error(list(spot.keys()))
+        
+        return self.direction(spot[t] - self.strike) 
 
 
 class EuropeanContract(Contract):
