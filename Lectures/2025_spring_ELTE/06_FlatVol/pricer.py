@@ -9,7 +9,7 @@ from model import *
 
 
 # TASK:
-# Implement calc_delta() and calc_gamma() functions using finite difference method.
+# Implement calc_delta() functions using finite difference approximation
 
 
 class Params:
@@ -44,7 +44,16 @@ class Pricer(ABC):
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        return np.nan
+        bump_size = self.relative_bump_size * self.model.spot
+        bumped_fair_values = list()
+        for b in (bump_size, -bump_size):
+            model = copy.deepcopy(self.model)
+            model.bump_spot(b)
+            bumped_pricer = self.create_pricer(self.contract, model, self.params)
+            bumped_fair_values.append(bumped_pricer.calc_fair_value())
+            del bumped_pricer
+            del model
+        return (bumped_fair_values[0] - 2 * self.calc_fair_value() + bumped_fair_values[1]) / (bump_size ** 2)
 
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:

@@ -9,7 +9,7 @@ from model import *
 
 
 # TASK:
-# Implement calc_delta() and calc_gamma() functions using finite difference method.
+# Implement calc_delta() functions using finite difference approximation
 
 
 class Params:
