@@ -54,6 +54,7 @@ class ForwardContract(Contract):
 
     def get_timeline(self) -> list[float]:
         return [round(self.expiry, self.timeline_digits)]
+    def payoff(self, spot: dict[float, float]) -> float:
 
 
 class EuropeanContract(Contract):

@@ -11,8 +11,11 @@ from src.enums import *
 
 
 class MarketData:
-    risk_free_rate = None
-    spot = None
+    risk_free_rate = 0.05
+    spot: dict[Stock, float] = {
+        Stock.BLUECHIP_BANK: 130.17,
+        Stock.TIPTOP_SOLUTIONS: 177.32
+    }
     volatility: dict[Stock, float] = {
         Stock.BLUECHIP_BANK: 0.381,
         Stock.TIPTOP_SOLUTIONS: 0.320

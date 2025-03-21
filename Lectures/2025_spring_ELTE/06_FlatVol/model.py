@@ -31,3 +31,23 @@ class MarketModel(ABC):
     @abstractmethod
     def get_vol(self, strike: float, expiry: float) -> float:
         pass
+
+
+class BSVol(MarketModel):
+    def __init__(self, und):
+        super().__init__(und)
+        self.reference_spot = MarketData.get_spot()[und]
+    def get_vol(self, strike: float, expiry: float) -> float:
+        strike = self.reference_spot
+        expiry = 1.0
+        coordinate = np.array([(strike, expiry)])
+        return self.volgrid.get_vol(coordinate)[0]
+
+class FlatVol(MarketModel):
+    def __init__(self, und):
+        super().__init__(und)
+    def get_vol(self, strike: float, expiry: float) -> float:
+        coordinate = np.array([(strike, expiry)])
+        return self.volgrid.get_vol(coordinate)[0]
+
+
