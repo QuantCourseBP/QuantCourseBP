@@ -190,7 +190,6 @@ class TestAmericanPDEPricer:
     def test_american_pde_pricer(self, param, expected_pv):
         pricer = AmericanPDEPricer(self.contract, self.model, param)
         pv = pricer.calc_fair_value()
-        print(pv)
         assert pv == pytest.approx(expected_pv)
 
 
