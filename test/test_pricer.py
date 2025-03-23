@@ -171,8 +171,24 @@ class TestEuropeanPDEPricer:
     pvs = [19.559315913934707, 19.557755216197634, 19.558594355475716]
 
     @pytest.mark.parametrize('param, expected_pv', zip(params, pvs))
-    def test_tree_pricer(self, param, expected_pv):
+    def test_european_pde_pricer(self, param, expected_pv):
         pricer = EuropeanPDEPricer(self.contract, self.model, param)
+        pv = pricer.calc_fair_value()
+        assert pv == pytest.approx(expected_pv)
+
+
+class TestAmericanPDEPricer:
+    und = Stock.TEST_COMPANY
+    expiry = 2.0
+    strike = 0.95 * MarketData.get_spot()[und]
+    model = FlatVolModel(und)
+    params = [PDEParams(method=BSPDEMethod.EXPLICIT), PDEParams(method=BSPDEMethod.IMPLICIT), PDEParams(method=BSPDEMethod.CRANK_NICOLSON)]
+    contract = AmericanContract(und, PutCallFwd.PUT, LongShort.LONG, strike, expiry)
+    pvs = [6.281464959775393, 6.279306011571068, 6.2803811513002366]
+
+    @pytest.mark.parametrize('param, expected_pv', zip(params, pvs))
+    def test_american_pde_pricer(self, param, expected_pv):
+        pricer = AmericanPDEPricer(self.contract, self.model, param)
         pv = pricer.calc_fair_value()
         assert pv == pytest.approx(expected_pv)
 
