@@ -200,8 +200,8 @@ class BlackScholesPDE(NumericalMethod):
                 lower_matrix, np.linalg.solve(upper_matrix, self.grid[1:-1, j + 1] + rhs_vector))
             if self.is_american:  # for American Contract
                 intrinsic_value = self.grid_intrinsic_value()
-                self.grid[:, j] = max(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
-                    else min(self.grid[:, j], intrinsic_value)
+                self.grid[:, j] = np.maximum(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
+                    else np.minimum(self.grid[:, j], intrinsic_value)
 
     def crank_nicolson_method(self) -> None:
         self.setup_boundary_conditions()
@@ -223,8 +223,8 @@ class BlackScholesPDE(NumericalMethod):
                 lower_matrix, np.linalg.solve(upper_matrix, (rhs_matrix @ self.grid[1:-1, j + 1]) + rhs_vector))
             if self.is_american:  # for American Contract
                 intrinsic_value = self.grid_intrinsic_value()
-                self.grid[:, j] = max(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
-                    else min(self.grid[:, j], intrinsic_value)
+                self.grid[:, j] = np.maximum(self.grid[:, j], intrinsic_value) if self.contract.long_short == LongShort.LONG \
+                    else np.minimum(self.grid[:, j], intrinsic_value)
 
 
 class SimpleBinomialTree(NumericalMethod):
