@@ -77,14 +77,24 @@ class Pricer(ABC):
         else:
             self.raise_pricer_not_implemented_error()
         bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
+        needed=[]
+        if self.finite_diff_method==FiniteDiffMethod.CENTRAL:
+            needed = [bump_size, 0, -bump_size]
+        elif self.finite_diff_method==FiniteDiffMethod.FORWARD:
+            needed = [2*bump_size, bump_size, 0]
+        elif self.finite_diff_method == FiniteDiffMethod.BACKWARD:
+            needed = [0, -bump_size, -2*bump_size]
+        else:
+            self.raise_pricer_not_implemented_error()
+
+        for b in needed:
             model = copy.deepcopy(self.model)
             model.bump_spot(b)
             bumped_pricer = self.create_pricer(self.contract, model, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model
-        return (bumped_fair_values[0] - 2 * self.calc_fair_value() + bumped_fair_values[1]) / (bump_size ** 2)
+        return (bumped_fair_values[0] - 2 * bumped_fair_values[1] + bumped_fair_values[2]) / (bump_size ** 2)
 
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
