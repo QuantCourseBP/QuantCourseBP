@@ -36,11 +36,18 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
 
 ## How to setup Git?
 
+There is two ways of setting up your git connection, either using HTTPS or SSH (we recommend the first for new users).
+Follow the relevant section below.
+
 <br>
 
 ### How to setup with HTTPS
 
+...
+
 <details>
+<summary> ### How to setup with SSH </summary>
+
 ### How to setup with SSH
 
 Before you clone our remote repository, you need to setup the way of accessing it. We use **SSH** (Secure Shell) to do so. To generate a SSH key pair, run the following command in command line.
