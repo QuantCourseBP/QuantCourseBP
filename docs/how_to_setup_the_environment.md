@@ -38,7 +38,10 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
 
 <br>
 
-### How to setup SSH
+### How to setup with HTTPS
+
+<details>
+### How to setup with SSH
 
 Before you clone our remote repository, you need to setup the way of accessing it. We use **SSH** (Secure Shell) to do so. To generate a SSH key pair, run the following command in command line.
 
@@ -76,7 +79,7 @@ To add the new key to your Github account, do the following:
 
 <br>
 
-### Cloning our repository
+#### Cloning our repository using SSH
 
 `git clone` is used to get a local copy of our remote repository.
 
@@ -92,6 +95,7 @@ To add the new key to your Github account, do the following:
 4. Make the `git clone` command. If you connect to this repo for the first time, you'll need to confirm that you want to connect to the GitHub host. After that, GitHub will be added to your SSH config as a known host. <br>
    <img src="_images/repo_clone4.png" width="500"> 
 
+</details>
 
 After cloning, let's setup your user information. Navigate to your new Git repository in command line, and run the following two commands. This will setup a global gitconfig under your user profile, and add these info.
 ```
