@@ -36,13 +36,14 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
 
 ## How to setup Git?
 
-There are two ways of setting up your git connection, either using HTTPS or SSH. Although the first one is easier for
-starters, we highly recommend investing a little more time setting up SSH (simply because it is safer from hijackers:
-if case your computer is stolen, only the SSH key gets out, which you can delete any time in your GitHub account).
-Follow the relevant section below.
+Before you clone our remote repository, you need to setup the way of accessing it. There are two ways of setting up your
+git connection, either using HTTPS or SSH. Although the first one is easier for starters, we highly recommend investing
+a little more time setting up SSH (simply because it is safer from hijackers: if case your computer is stolen, only the
+SSH key gets out, which you can delete any time in your GitHub account). Follow the relevant section below.
 
-Anyway, `git clone` is used to get a local copy of our remote repository. Go to the opening page of our repository, where
-you'll see the source code of our `master` branch. Cloning links are available on '<> Code' button <br>.
+Either ways, `git clone` is used to get a local copy of our remote repository. Go to the opening page of our repository,
+where you'll see the source code of our `master` branch. Cloning links are available on '<> Code' button <br>.
+
 <img src="_images/repo_clone1.png" width="600">
 
 <br>
@@ -53,11 +54,9 @@ you'll see the source code of our `master` branch. Cloning links are available o
 <summary> <b>Click here for details on HTTPS setup.</b> </summary>
 
 1. Click on '<> Code' button, choose 'HTTPS' from cloning options, and copy the path from there: <br>
-
     <img src="_images/repo_clone2_https.png" width="300">
    
 2. When you first connect to the remote e.g. via push or pull, Windows will connect to Github to login:
-
     <img src="_images/win_github_popup.png" width="300">
 
 This way Windows Credential Manager will store your GitHub credentials to login each time you connect. Just remember to
@@ -74,8 +73,13 @@ delete/refresh it when you change your GitHub password.
 <details>
 <summary> <b>Click here for details on SSH setup.</b> </summary>
 
-Before you clone our remote repository, you need to setup the way of accessing it. We use **SSH** (Secure Shell) to do
-so. To generate a SSH key pair, run the following command in command line.
+To use **SSH** (Secure Shell) for accessing the remote repos, you need to generate a SSH key pair by running the following
+command in command line:
+
+```
+    ssh-keygen -t ed25519 -C <name-of-workstation>
+```
+<img src="_images/ssh_keygen.png" width="500">
 
 <details>
 <summary> <b>Click for more details: What is SSH, and why do we need it?</b> </summary>
@@ -97,11 +101,6 @@ it, you are good to go, it is unreachable. with the `-C` option, you can name yo
 use only the English alphabet).
 
 </details>
-
-```
-    ssh-keygen -t ed25519 -C <name-of-workstation>
-```
-<img src="_images/ssh_keygen.png" width="500">
 
 To add the new key to your Github account, do the following:
 1. Go to Settings > SSH and GPG keys (in Access section) <br>
