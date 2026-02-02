@@ -36,30 +36,58 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
 
 ## How to setup Git?
 
-There is two ways of setting up your git connection, either using HTTPS or SSH (we recommend the first for new users).
+There are two ways of setting up your git connection, either using HTTPS or SSH. Although the first one is easier for
+starters, we highly recommend investing a little more time setting up SSH (simply because it is safer from hijackers:
+if case your computer is stolen, only the SSH key gets out, which you can delete any time in your GitHub account).
 Follow the relevant section below.
+
+Anyway, `git clone` is used to get a local copy of our remote repository. Go to the opening page of our repository, where
+you'll see the source code of our `master` branch. Cloning links are available on '<> Code' button <br>.
+<img src="_images/repo_clone1.png" width="600">
 
 <br>
 
-### How to setup with HTTPS
+### How to clone with HTTPS
 
-...
+1. Click on '<> Code' button, and choose 'HTTPS' from cloning options, and copy the path from there. <br>
+    <img src="_images/repo_clone2_https.png" width="300">
+2. When you first connect to the remote e.g. via push or pull, Windows will connect to Github to login.
+    <img src="_images/win_github_popup.png" width="300">
+
+This way Windows Credential Manager will store your GitHub credentials to login each time you connect. Just remember to
+delete/refresh it when you change your GitHub password.
+
+<img src="_images/cred_manager.png" width="300">
+
+<br>
+
+### How to setup SSH and clone with it
 
 <details>
-<summary> ### How to setup with SSH </summary>
+<summary> <b>Click here for details on SSH setup.</b> </summary>
 
-### How to setup with SSH
-
-Before you clone our remote repository, you need to setup the way of accessing it. We use **SSH** (Secure Shell) to do so. To generate a SSH key pair, run the following command in command line.
+Before you clone our remote repository, you need to setup the way of accessing it. We use **SSH** (Secure Shell) to do
+so. To generate a SSH key pair, run the following command in command line.
 
 <details>
 <summary> <b>Click for more details: What is SSH, and why do we need it?</b> </summary>
 <br>
 
-The SSH protocol connects to the network in a secured way (i.e. encrypts the communication between endpoints), which allows us to use Git through the command line and GUIs more easily. With SSH setup, we don't need to login all the time connecting to the remote repository, the SSH public key-based authentication does it for us. But this key should be managed as a password, it should not be shared with anyone.
+The SSH protocol connects to the network in a secured way (i.e. encrypts the communication between endpoints), which
+allows us to use Git through the command line and GUIs more easily. With SSH setup, we don't need to login all the time
+connecting to the remote repository, the SSH public key-based authentication does it for us. But this key should be 
+managed as a password, it should not be shared with anyone.
 
-The following command line will generate a public and a private key: the former will be placed in the remote repository and the later remains on your PC. If no other location is provided, it will create an `.ssh` folder under your user profile (on Windows: `%USERPROFILE%\.ssh`, on Linux: `~/.ssh`). For extra encryption to secure your private key on the computer, you can provide a passphrase to the keygen. But this can be annoying during the development, since this passphrase will be requested every time you try to access the remote repo. To avoid this, you can skip the passphrase creation by hitting `ENTER` without any input (twice because of the confirmation).
-If the `.ssh` folder is placed under your user or any safe location where no guests or other user on the PC can access it, you are good to go, it is unreachable. with the `-C` option, you can name your ssh keypair (it is recommended to use only the English alphabet).
+The following command line will generate a public and a private key: the former will be placed in the remote repository 
+and the later remains on your PC. If no other location is provided, it will create an `.ssh` folder under your user 
+profile (on Windows: `%USERPROFILE%\.ssh`, on Linux: `~/.ssh`). For extra encryption to secure your private key on the 
+computer, you can provide a passphrase to the keygen. But this can be annoying during the development, since this 
+passphrase will be requested every time you try to access the remote repo. To avoid this, you can skip the passphrase 
+creation by hitting `ENTER` without any input (twice because of the confirmation).
+If the `.ssh` folder is placed under your user or any safe location where no guests or other user on the PC can access 
+it, you are good to go, it is unreachable. with the `-C` option, you can name your ssh keypair (it is recommended to 
+use only the English alphabet).
+
 </details>
 
 ```
@@ -88,21 +116,19 @@ To add the new key to your Github account, do the following:
 
 #### Cloning our repository using SSH
 
-`git clone` is used to get a local copy of our remote repository.
-
-1. Go to the opening page of our repository, where you'll see the source code of our `master` branch. Click on '<> Code' button <br>
-    <img src="_images/repo_clone1.png" width="600">
-2. Choose 'SSH' from cloning options, and copy the path from there. <br>
+1. Click on '<> Code' button, and choose 'SSH' from cloning options, and copy the path from there. <br>
     <img src="_images/repo_clone2.png" width="300">
-3. Open a command line and navigate to the place where you would like to setup your repo e.g. `C:\Git` for Windows. <br>
+2. Open a command line and navigate to the place where you would like to setup your repo e.g. `C:\Git` for Windows. <br>
    Few useful commands that you can use in the prompt (check `cd` which helps you to navigate into your desired location):
     * for Windows Command line [here](https://www.digitalcitizen.life/command-prompt-how-use-basic-commands/) (other way to open a command prompt is to navigate to the folder in File explorer, click into the Address bar, type `cmd` and hit `ENTER`) <br>
         <img src="_images/repo_clone3.png" width="600">
     * for Unix shell [here](https://mally.stanford.edu/~sr/computing/basic-unix.html)
-4. Make the `git clone` command. If you connect to this repo for the first time, you'll need to confirm that you want to connect to the GitHub host. After that, GitHub will be added to your SSH config as a known host. <br>
+3. Make the `git clone` command. If you connect to this repo for the first time, you'll need to confirm that you want to connect to the GitHub host. After that, GitHub will be added to your SSH config as a known host. <br>
    <img src="_images/repo_clone4.png" width="500"> 
 
 </details>
+
+<br>
 
 After cloning, let's setup your user information. Navigate to your new Git repository in command line, and run the following two commands. This will setup a global gitconfig under your user profile, and add these info.
 ```
