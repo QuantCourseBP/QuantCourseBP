@@ -141,6 +141,8 @@ To add the new key to your Github account, do the following:
 
 <br>
 
+...
+
 After cloning, let's setup your user information. Navigate to your new Git repository in command line, and run the following two commands. This will setup a global gitconfig under your user profile, and add these info.
 ```
     git config --global user.email "you@example.com"
