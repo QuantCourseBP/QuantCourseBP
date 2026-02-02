@@ -53,6 +53,8 @@ where you'll see the source code of our `master` branch. Cloning links are avail
 <details>
 <summary> <b>Click here for details on HTTPS setup.</b> </summary>
 
+<br>
+
 1. Click on '<> Code' button, choose 'HTTPS' from cloning options, and copy the path from there: <br>
     <img src="_images/repo_clone2_https.png" width="300">
    
@@ -73,8 +75,10 @@ delete/refresh it when you change your GitHub password.
 <details>
 <summary> <b>Click here for details on SSH setup.</b> </summary>
 
-To use **SSH** (Secure Shell) for accessing the remote repos, you need to generate a SSH key pair by running the following
-command in command line:
+<br>
+
+To use **SSH** (Secure Shell) for accessing our remote repo, you need to generate an SSH key pair by running the
+following command in command line:
 
 ```
     ssh-keygen -t ed25519 -C <name-of-workstation>
