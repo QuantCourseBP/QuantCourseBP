@@ -6,8 +6,8 @@
 
 * [Setup your own workspace](#setup-your-own-workspace)
 * [How to setup Git?](#how-to-setup-git)
-    * [How to setup SSH](#how-to-setup-ssh)
-    * [Cloning our repository](#cloning-our-repository)
+    * [How to clone with HTTPS](#how-to-clone-with-https) 
+    * [How to setup SSH and clone with it](#how-to-setup-ssh-and-clone-with-it)
 * [How to setup the Python environment?](#how-to-setup-the-python-environment)
     * [Create our virtual env](#create-our-virtual-env)
 * [Trouble-shooting](#trouble-shooting)
