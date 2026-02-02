@@ -49,15 +49,23 @@ you'll see the source code of our `master` branch. Cloning links are available o
 
 ### How to clone with HTTPS
 
-1. Click on '<> Code' button, and choose 'HTTPS' from cloning options, and copy the path from there. <br>
+<details>
+<summary> <b>Click here for details on HTTPS setup.</b> </summary>
+
+1. Click on '<> Code' button, choose 'HTTPS' from cloning options, and copy the path from there: <br>
+
     <img src="_images/repo_clone2_https.png" width="300">
-2. When you first connect to the remote e.g. via push or pull, Windows will connect to Github to login.
+   
+2. When you first connect to the remote e.g. via push or pull, Windows will connect to Github to login:
+
     <img src="_images/win_github_popup.png" width="300">
 
 This way Windows Credential Manager will store your GitHub credentials to login each time you connect. Just remember to
 delete/refresh it when you change your GitHub password.
 
-<img src="_images/cred_manager.png" width="300">
+<img src="_images/cred_manager.png" width="600">
+
+</details>
 
 <br>
 
