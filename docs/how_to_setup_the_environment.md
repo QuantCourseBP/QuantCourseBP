@@ -6,8 +6,8 @@
 
 * [Setup your own workspace](#setup-your-own-workspace)
 * [How to setup Git?](#how-to-setup-git)
-    * [How to clone with HTTPS](#how-to-clone-with-https) 
-    * [How to setup SSH and clone with it](#how-to-setup-ssh-and-clone-with-it)
+    * [Option 1: How to clone with HTTPS](#option-1-how-to-clone-with-https) 
+    * [Option 2: How to setup SSH and clone with it](#option-2-how-to-setup-ssh-and-clone-with-it)
 * [How to setup the Python environment?](#how-to-setup-the-python-environment)
     * [Create our virtual env](#create-our-virtual-env)
 * [Trouble-shooting](#trouble-shooting)
@@ -42,13 +42,13 @@ a little more time setting up SSH (simply because it is safer from hijackers: if
 SSH key gets out, which you can delete any time in your GitHub account). Follow the relevant section below.
 
 Either ways, `git clone` is used to get a local copy of our remote repository. Go to the opening page of our repository,
-where you'll see the source code of our `master` branch. Cloning links are available on '<> Code' button <br>.
+where you'll see the source code of our `master` branch. Cloning links are available on '<> Code' button. <br>
 
 <img src="_images/repo_clone1.png" width="600">
 
 <br>
 
-### How to clone with HTTPS
+### Option 1: How to clone with HTTPS
 
 <details>
 <summary> <b>Click here for details on HTTPS setup.</b> </summary>
@@ -70,7 +70,7 @@ delete/refresh it when you change your GitHub password.
 
 <br>
 
-### How to setup SSH and clone with it
+### Option 2: How to setup SSH and clone with it
 
 <details>
 <summary> <b>Click here for details on SSH setup.</b> </summary>
