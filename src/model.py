@@ -1,8 +1,11 @@
 from __future__ import annotations
+import sys
+sys.path.append(r"C:\git\QuantCourseBP\src")
 from abc import ABC, abstractmethod
 from src.market_data import *
 from src.enums import *
 import numpy as np
+
 
 
 class MarketModel(ABC):
