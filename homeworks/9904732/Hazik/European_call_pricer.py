@@ -4,7 +4,7 @@ from scipy.stats import norm
 
 def black_scholes_eur_call(r, T, S0, sigma, K):
     """
-    Black-Scholes price and Greeks for a European put option
+    Black-Scholes price and Greeks for a European call option
 
     r: risk-free interest rate
     T: time to maturity (years)
@@ -23,7 +23,7 @@ def black_scholes_eur_call(r, T, S0, sigma, K):
     d1 = (np.log(S0 / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
 
-    #Put price
+    #call price
     price = S0 * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
 
     #Greeks
@@ -43,10 +43,11 @@ K = 100       #strike price
 
 price, delta, vega, theta, gamma, rho = black_scholes_eur_call(r, T, S0, sigma, K)
 
-print("European Put Option Results")
+print("European call Option Results")
 print("Price:", price)
 print("Delta:", delta)
 print("Vega:", vega)
 print("Theta:", theta)
 print("Gamma:", gamma)
+
 print("Rho:", rho)
