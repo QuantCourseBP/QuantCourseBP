@@ -63,7 +63,8 @@ K = 100       #strike price
 price_call = black_scholes_eur_call(r, T, S0, sigma, K)
 price_put = black_scholes_eur_put(r, T, S0, sigma, K)
 
-if (price_call-price_put-(S0-K * np.exp(-r * T)) < np.exp(-10)):
+if (price_call-price_put-(S0-K * np.exp(-r * T)) < np.exp(-15)):
     print("Put-Call parity holds.")
 else:
+
     print("Put-Call parity doesn't hold.")
