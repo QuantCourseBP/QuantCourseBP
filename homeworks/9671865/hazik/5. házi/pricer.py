@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from scipy.stats import norm
-from src.enums import *
+from enums import *
 from contract import *
 from model import *
 
@@ -116,20 +116,20 @@ class EuropeanAnalyticPricer(Pricer):
         super().__init__(contract, model, params)
 
     def calc_fair_value(self) -> float:
-        # direction =
-        # strike =
-        # expiry =
-        # time_to_expiry =
-        # spot =
-        # vol =
-        # rate =
-        # df =
-        # d1 =
-        # d2 =
+        direction = self.contract.direction
+        strike = self.contract.strike
+        expiry = self.contract.expiry
+        time_to_expiry = expiry - self.valuation_time
+        spot = self.model.spot
+        vol = self.model.vol
+        rate = self.model.risk_free_rate
+        df = self.model.calc_df(time_to_expiry)
+        d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
+        d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
         if self.contract.derivative_type == PutCallFwd.CALL:
-            raise NotImplementedError('Fair value calculation is not implemented for Call')
+            return direction * (spot * norm.cdf(d1) - strike * df * norm.cdf(d2))
         elif self.contract.derivative_type == PutCallFwd.PUT:
-            raise NotImplementedError('Fair value calculation is not implemented for Put')
+            return direction * (strike * df * norm.cdf(-d2) - spot * norm.cdf(-d1))
         else:
             self.contract.raise_incorrect_derivative_type_error()
 
@@ -219,3 +219,102 @@ class EuropeanAnalyticPricer(Pricer):
         else:
             self.contract.raise_incorrect_derivative_type_error()
         return self.contract.direction * greek
+
+
+
+class EuropeanDigitalAnalyticPricer(Pricer):
+    def __init__(self, contract: EuropeanDigitalContract, model: MarketModel, params: Params) -> None:
+        if not isinstance(contract, EuropeanDigitalContract):
+            raise TypeError(
+                f'Contract must be of type EuropeanDigitalContract but received {type(contract).__name__}'
+            )
+        super().__init__(contract, model, params)
+
+    def calc_fair_value(self) -> float:
+        direction = self.contract.direction
+        strike = self.contract.strike
+        expiry = self.contract.expiry
+        time_to_expiry = expiry - self.valuation_time
+        spot = self.model.spot
+        vol = self.model.vol
+        rate = self.model.risk_free_rate
+        df = self.model.calc_df(time_to_expiry)
+
+        d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
+
+        if self.contract.derivative_type == PutCallFwd.CALL:
+            return direction * df * norm.cdf(d2)   #az árazó képlet callra
+        elif self.contract.derivative_type == PutCallFwd.PUT:
+            return direction * df * norm.cdf(-d2)   #az árazó képlet putra
+        else:
+            self.contract.raise_incorrect_derivative_type_error()
+
+
+    #itt későbbi órán lesz implementálva ilyen bumppal jobban greek közelítés, de itt a házihoz ez a fajta is jó lesz
+    def calc_delta(self) -> float:
+        h = 1e-4 * self.model.spot
+        original_spot = self.model.spot
+
+        self.model.spot = original_spot + h
+        up = self.calc_fair_value()
+
+        self.model.spot = original_spot - h
+        down = self.calc_fair_value()
+
+        self.model.spot = original_spot
+        return (up - down) / (2 * h)
+
+    def calc_gamma(self) -> float:
+        h = 1e-4 * self.model.spot
+        original_spot = self.model.spot
+
+        self.model.spot = original_spot + h
+        up = self.calc_fair_value()
+
+        self.model.spot = original_spot
+        mid = self.calc_fair_value()
+
+        self.model.spot = original_spot - h
+        down = self.calc_fair_value()
+
+        self.model.spot = original_spot
+        return (up - 2 * mid + down) / (h ** 2)
+
+    def calc_vega(self) -> float:
+        h = 1e-4
+        original_vol = self.model.vol
+
+        self.model.vol = original_vol + h
+        up = self.calc_fair_value()
+
+        self.model.vol = original_vol - h
+        down = self.calc_fair_value()
+
+        self.model.vol = original_vol
+        return (up - down) / (2 * h)
+
+    def calc_theta(self) -> float:
+        h = 1e-5
+        original_valuation_time = self.valuation_time
+
+        self.valuation_time = original_valuation_time
+        now = self.calc_fair_value()
+
+        self.valuation_time = original_valuation_time + h
+        later = self.calc_fair_value()
+
+        self.valuation_time = original_valuation_time
+        return (now - later) / h
+
+    def calc_rho(self) -> float:
+        h = 1e-4
+        original_rate = self.model.risk_free_rate
+
+        self.model.risk_free_rate = original_rate + h
+        up = self.calc_fair_value()
+
+        self.model.risk_free_rate = original_rate - h
+        down = self.calc_fair_value()
+
+        self.model.risk_free_rate = original_rate
+        return (up - down) / (2 * h)
