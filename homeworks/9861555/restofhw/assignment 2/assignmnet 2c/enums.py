@@ -1,4 +1,4 @@
-from enum import Enum #enum kategoria defre jó
+from enum import Enum 
 
 
 class Stock(str, Enum):
@@ -33,12 +33,12 @@ class LongShort(str, Enum):
     SHORT: str = 'SHORT'
 
 
-class UpDown(str, Enum):  # for Barrier Contract
+class UpDown(str, Enum):  
     UP: str = 'UP'
     DOWN: str = 'DOWN'
 
 
-class InOut(str, Enum):  # for Barrier Contract
+class InOut(str, Enum):
     IN: str = 'IN'
     OUT: str = 'OUT'
 
