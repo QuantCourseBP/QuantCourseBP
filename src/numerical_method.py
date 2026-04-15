@@ -51,27 +51,54 @@ class MCMethod(NumericalMethod):
         return rnd
 
     def simulate_spot_paths(self) -> np.ndarray:
-        tenors = self.find_simulation_tenors()
-        num_of_paths = self.params.num_of_paths
-        num_of_tenors = len(tenors)
-        spot_paths = np.zeros(shape=(num_of_paths, num_of_tenors))
-        rnd = self.generate_std_norm(num_of_tenors)
-        s_0 = self.model.spot
-        contract_tenors = self.contract.get_timeline()
 
-        for path in range(num_of_paths):
-            for time_index in range(num_of_tenors):
-                if time_index == 0:
-                    spot_paths[path, time_index] = s_0
-                else:
-                    t_from = tenors[time_index-1]
-                    t_to = tenors[time_index]
-                    spot_from = spot_paths[path, time_index-1]
-                    z=rnd[path,time_index-1]
-                    spot_to = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
-                    spot_paths[path, time_index] = spot_to
-        contract_tenor_idx = [idx for idx in range(num_of_tenors) if tenors[idx] in contract_tenors]
-        return spot_paths[:, contract_tenor_idx]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        # tenors = self.find_simulation_tenors()
+        # num_of_paths = self.params.num_of_paths
+        # num_of_tenors = len(tenors)
+        # spot_paths = np.zeros(shape=(num_of_paths, num_of_tenors))
+        # rnd = self.generate_std_norm(num_of_tenors)
+        # s_0 = self.model.spot
+        # contract_tenors = self.contract.get_timeline()
+        #
+        # for path in range(num_of_paths):
+        #     for time_index in range(num_of_tenors):
+        #         if time_index == 0:
+        #             spot_paths[path, time_index] = s_0
+        #         else:
+        #             t_from = tenors[time_index-1]
+        #             t_to = tenors[time_index]
+        #             spot_from = spot_paths[path, time_index-1]
+        #             z=rnd[path,time_index-1]
+        #             spot_to = self.evolve_simulated_spot(t_from, t_to, spot_from, z)
+        #             spot_paths[path, time_index] = spot_to
+        # contract_tenor_idx = [idx for idx in range(num_of_tenors) if tenors[idx] in contract_tenors]
+        # return spot_paths[:, contract_tenor_idx]
 
     @abstractmethod
     def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:

@@ -463,24 +463,49 @@ class GenericMCPricer(Pricer):
             raise TypeError(f'MC is not supported for model type {type(model).__name__}')
 
     def calc_fair_value_with_ci(self) -> tuple[float, tuple[float, ...]]:
-        contract = self.contract
-        contractual_timeline = contract.get_timeline()
-        spot_paths = self.mc_method.simulate_spot_paths()
-        num_of_paths = self.params.num_of_paths
-        path_payoff = np.empty(num_of_paths)
-        for path in range(num_of_paths):
-            fixing_schedule = dict(zip([0] + contractual_timeline,
-                                        np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
-            path_payoff[path] = contract.payoff(fixing_schedule)
-        maturity = contract.expiry
-        if self.params.control_variate:
-            # adjust path_payoff inplace
-            self.apply_control_var_adj(path_payoff, spot_paths)
-        fv = mean(path_payoff) * self.model.calc_df(maturity)
-        fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
-                                   np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
-                                  for mult in [-1, 1]])
-        return fv, fv_conf_interval
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # contract = self.contract
+        # contractual_timeline = contract.get_timeline()
+        # spot_paths = self.mc_method.simulate_spot_paths()
+        # num_of_paths = self.params.num_of_paths
+        # path_payoff = np.empty(num_of_paths)
+        # for path in range(num_of_paths):
+        #     fixing_schedule = dict(zip([0] + contractual_timeline,
+        #                                 np.concatenate((np.array([self.model.spot]), spot_paths[path, :])) ))
+        #     path_payoff[path] = contract.payoff(fixing_schedule)
+        # maturity = contract.expiry
+        # if self.params.control_variate:
+        #     # adjust path_payoff inplace
+        #     self.apply_control_var_adj(path_payoff, spot_paths)
+        # fv = mean(path_payoff) * self.model.calc_df(maturity)
+        # fv_conf_interval = tuple([(mean(path_payoff) + 1.96 * mult * np.std(path_payoff, ddof=1) /
+        #                            np.sqrt(self.params.num_of_paths)) * self.model.calc_df(maturity)
+        #                           for mult in [-1, 1]])
+        # return fv, fv_conf_interval
 
     def calc_fair_value(self) -> float:
         return self.calc_fair_value_with_ci()[0]
