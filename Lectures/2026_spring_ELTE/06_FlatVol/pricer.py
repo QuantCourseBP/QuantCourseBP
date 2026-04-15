@@ -39,7 +39,16 @@ class Pricer(ABC):
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        return np.nan
+        bump_size = self.relative_bump_size * self.model.spot
+        bump_fair_values = list()
+        for b in (bump_size, -bump_size):
+            model = copy.deepcopy(self.model)
+            model.bump_spot(b)
+            bump_pricer = self.create_pricer(self.contract, model, self.params)
+            bump_fair_values.append(bump_pricer.calc_fair_value())
+            del model
+            del bump_pricer
+        return (bump_fair_values[0] - bump_fair_values[1]) / (2 * bump_size)
 
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:

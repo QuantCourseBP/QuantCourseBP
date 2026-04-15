@@ -33,24 +33,24 @@ class MarketModel(ABC):
         pass
 
 
-class BSVol(MarketModel):
+class BSVolModel(MarketModel):
     def __init__(self, und):
         super().__init__(und)
 
 
     def get_vol(self, strike, expiry) -> float:
         strike = self.spot
-        expiry =1.0
-        coordinate= np.array([(strike, expiry)])
+        expiry = 1.0
+        coordinate = np.array([(strike, expiry)])
         return self.volgrid.get_vol(coordinate)[0]
     
 
 
-class FlatVol(MarketModel):
+class FlatVolModel(MarketModel):
     def __init__(self, und):
         super().__init__(und)
     
     def get_vol(self, strike: float, expiry: float) -> float:
-        coordinate= np.array([(strike, expiry)])
+        coordinate = np.array([(strike, expiry)])
         return self.volgrid.get_vol(coordinate)[0]
         

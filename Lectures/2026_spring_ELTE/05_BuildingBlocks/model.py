@@ -12,4 +12,13 @@ import numpy as np
 # 3. Implement calc_df() method which takes a tenor and returns the corresponding discount factor.
 
 
-
+class MarketModel:
+    def __init__(self, underlying: Stock):
+        self.underlying = underlying
+        self.risk_free_rate = MarketData.get_risk_free_rate()
+        self.spot = MarketData.get_spot()[underlying]
+        self.vol = MarketData.get_vol()[underlying]
+        
+    def calc_df(self, tenor: float):
+        return np.exp(-1.0 * self.risk_free_rate * tenor)
+    
