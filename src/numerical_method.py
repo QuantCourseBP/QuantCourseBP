@@ -79,7 +79,7 @@ class MCMethod(NumericalMethod):
 
 
 class MCMethodFlatVol(MCMethod):
-    def __int__(self, contract: Contract, model: FlatVolModel, params: MCParams):
+    def __init__(self, contract: Contract, model: FlatVolModel, params: MCParams):
         super().__init__(contract, model, params)
 
     def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
@@ -90,13 +90,22 @@ class MCMethodFlatVol(MCMethod):
             new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
         elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
+        elif self.params.evolve_spot_method == MCNumMethod.MILSTEIN:
+            bump_size = 0.0001 * spot_from
+            values = []
+            for b in (bump_size, -bump_size):
+                bumped_spot = spot_from + b
+                bumped_vol = self.model.get_vol(bumped_spot, t_from)
+                values.append(bumped_vol * bumped_spot)
+            derivative = (values[0]-values[1])/(2*bump_size)
+            new_spot = (spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)) + (((1/2) * derivative) * (vol*spot_from) * ((z**2 * dt) - dt))
         else:
             raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
 
 
 class MCMethodBS(MCMethod):
-    def __int__(self, contract: Contract, model: BSVolModel, params: MCParams):
+    def __init__(self, contract: Contract, model: BSVolModel, params: MCParams):
         super().__init__(contract, model, params)
 
     def evolve_simulated_spot(self, t_from: float, t_to: float, spot_from: float, z: float) -> float:
@@ -107,6 +116,15 @@ class MCMethodBS(MCMethod):
             new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
         elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
+        elif self.params.evolve_spot_method == MCNumMethod.MILSTEIN:
+            bump_size = 0.0001 * spot_from
+            values = []
+            for b in (bump_size, -bump_size):
+                bumped_spot = spot_from + b
+                bumped_vol = self.model.get_vol(bumped_spot, t_from)
+                values.append(bumped_vol * bumped_spot)
+            derivative = (values[0]-values[1])/(2*bump_size)
+            new_spot = (spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)) + (((1/2) * derivative) * (vol*spot_from) * ((z**2 * dt) - dt))
         else:
             raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot

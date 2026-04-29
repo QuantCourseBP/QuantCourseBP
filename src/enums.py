@@ -53,3 +53,12 @@ class MCNumMethod(str, Enum):
     EULER: str = 'EULER'
     MILSTEIN: str = 'MILSTEIN'
     EXACT: str = 'EXACT'
+
+class FiniteDifferenceMethod(str, Enum):
+    FORWARD: str = 'FORWARD'
+    BACKWARD: str = 'BACKWARD'
+    CENTRAL: str = 'CENTRAL'
+
+class BumpType(str, Enum):
+    ABSOLUTE: str = 'ABSOLUTE'
+    RELATIVE: str = 'RELATIVE'
