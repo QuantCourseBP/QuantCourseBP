@@ -215,6 +215,44 @@ class TestAsianPricer:
         gamma = pricer.calc_gamma(self.method)
         assert gamma == pytest.approx(expected_gamma)
 
+    @pytest.mark.parametrize('n_mon', [10, 100, 1000, 10000])
+    def test_moment_matching(self, n_mon):
+        contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG,
+                                 self.spot, self.exp, n_mon)
+        pricer_mm = AsianMomentMatchingPricer(contract, self.model, Params())
+        p_mm = pricer_mm.calc_fair_value()
+
+        params_mc = MCParams(seed=11, num_of_path=30000)
+        pricer_mc = GenericMCPricer(contract, self.model, params_mc)
+        p_mc, (low_ci, high_ci) = pricer_mc.calc_fair_value_with_ci()
+
+        sd_mc = (high_ci - p_mc) / 1.96
+        z_score = (p_mm - p_mc) / sd_mc
+
+        assert -1.96 <= z_score <= 1.96, f"n={n_mon} not appropriate! Z: {z_score}"
+
+    @pytest.mark.parametrize('moneyness', moneyness_list)
+    def test_put_call_parity(self, moneyness):
+        strike = self.spot * moneyness
+        params = Params()
+
+        contract_call = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, strike, self.exp, self.num_mon)
+        pricer_call = AsianMomentMatchingPricer(contract_call, self.model, params)
+        p_call = pricer_call.calc_fair_value()
+
+        contract_put = AsianContract(self.und, PutCallFwd.PUT, LongShort.LONG, strike, self.exp, self.num_mon)
+        pricer_put = AsianMomentMatchingPricer(contract_put, self.model, params)
+        p_put = pricer_put.calc_fair_value()
+
+        rate = self.model.risk_free_rate
+        df = self.model.calc_df(self.exp)
+        timeline = contract_call.get_timeline()
+
+        n = len(timeline)
+        moment_first = self.model.spot / n * sum([np.exp(rate * t_i) for t_i in timeline])
+
+        assert p_call - p_put == pytest.approx(df * (moment_first - strike))
+
 
 class TestBarrierPricer:
     und = Stock.TEST_COMPANY
