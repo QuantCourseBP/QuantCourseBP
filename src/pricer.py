@@ -508,7 +508,38 @@ class GenericMCPricer(Pricer):
         else:
             raise TypeError(f'Control variate is not supported for contract type{type(contract).__name__}')
 
+    def calc_delta(self, method: GreekMethod) -> float:
+        if method != GreekMethod.BUMP:
+            self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
 
+        spot = self.model.spot
+        bump_size = self.relative_bump_size * spot
+        delta_pct = self.relative_bump_size  # Ez a delta a képletben (pl. 0.01)
+
+        spot_paths = self.mc_method.simulate_spot_paths()
+        
+        paths_up = spot_paths * (1 + delta_pct)
+        paths_down = spot_paths * (1 - delta_pct)
+        
+        num_of_paths = self.params.num_of_paths
+        payoffs_up = np.empty(num_of_paths)
+        payoffs_down = np.empty(num_of_paths)
+        
+        timeline = self.contract.get_timeline()
+        
+        for i in range(num_of_paths):
+            fix_up = dict(zip([0] + timeline, np.concatenate(([spot + bump_size], paths_up[i, :]))))
+            payoffs_up[i] = self.contract.payoff(fix_up)
+            
+            fix_down = dict(zip([0] + timeline, np.concatenate(([spot - bump_size], paths_down[i, :]))))
+            payoffs_down[i] = self.contract.payoff(fix_down)
+            
+        df = self.model.calc_df(self.contract.expiry)
+        fv_up = np.mean(payoffs_up) * df
+        fv_down = np.mean(payoffs_down) * df
+        
+        return (fv_up - fv_down) / (2 * bump_size)
+    
 class AsianMomentMatchingPricer(Pricer):
     def __init__(self, contract: AsianContract, model: MarketModel, params: Params):
         if not isinstance(contract, AsianContract):

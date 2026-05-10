@@ -90,6 +90,10 @@ class MCMethodFlatVol(MCMethod):
             new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
         elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
+        elif self.params.evolve_spot_method == MCNumMethod.MILSTEIN:
+            new_spot = (spot_from + rate * spot_from * dt
+            + vol * spot_from * z * np.sqrt(dt)
+            + 0.5 * (vol**2) * spot_from * dt * ((z**2) - 1.0))
         else:
             raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
@@ -107,6 +111,10 @@ class MCMethodBS(MCMethod):
             new_spot = spot_from * np.exp((rate - 0.5 * vol**2) * dt + (vol * z * np.sqrt(dt)))
         elif self.params.evolve_spot_method == MCNumMethod.EULER:
             new_spot = spot_from + rate*spot_from*dt + vol*spot_from*z*np.sqrt(dt)
+        elif self.params.evolve_spot_method == MCNumMethod.MILSTEIN:
+            new_spot = (spot_from + rate * spot_from * dt
+            + vol * spot_from * z * np.sqrt(dt)
+            + 0.5 * (vol**2) * spot_from * dt * ((z**2) - 1.0))
         else:
             raise TypeError(self.params.evolve_spot_method + " evolve method is not implemented")
         return new_spot
