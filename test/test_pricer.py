@@ -215,6 +215,29 @@ class TestAsianPricer:
         gamma = pricer.calc_gamma(self.method)
         assert gamma == pytest.approx(expected_gamma)
 
+    @pytest.mark.parametrize('moneyness', moneyness_list)
+    def test_put_call_parity(self, moneyness):
+        
+        strike = self.spot * moneyness
+        
+        call_contract = AsianContract(self.und, PutCallFwd.CALL, LongShort.LONG, strike, self.exp, self.num_mon)
+        call_pricer = AsianMomentMatchingPricer(call_contract, self.model, Params())
+        call_pv = call_pricer.calc_fair_value()
+
+        
+        put_contract = AsianContract(self.und, PutCallFwd.PUT, LongShort.SHORT, strike, self.exp, self.num_mon)
+        put_pricer = AsianMomentMatchingPricer(put_contract, self.model, Params())
+        put_pv = put_pricer.calc_fair_value()
+        
+        n = len(call_contract.get_timeline())
+        
+        moment_first = self.spot / n * sum([np.exp(self.model.risk_free_rate * t) for t in call_contract.get_timeline()])
+        
+        df = self.model.calc_df(self.exp)
+        
+        expected_fwd_pv = df * (moment_first - strike)
+
+        assert call_pv + put_pv == pytest.approx(expected_fwd_pv)
 
 class TestBarrierPricer:
     und = Stock.TEST_COMPANY
