@@ -4,7 +4,7 @@ Check the [Git User Guide](../docs/how_to_use_git.md) for details on the command
 
 1. Create a new branch for yourself with a name containing first the **date** when you create it and then your **course id**. <br>
    (Check `git checkout` command for details on the branch creation.) <br>
-    *E.g. 20250314_qwertya__git_homework*
+    *E.g. 20250314_qwertya_homework*
 
 2. Add your **course id** to 'my_config.json' (in 'homeworks' folder) before you run the following script.
 3. Run 'git_homework.py' script on the root.<br>

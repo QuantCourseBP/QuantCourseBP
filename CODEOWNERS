@@ -1,8 +1,8 @@
 # Default owners of everything in the repository.
-*    @samyfarha @harinorbert @friedgab @vargala4 @erno-solymosi @animoku168 @DorikaJ @VagoLali @action87 @gotamas @Makako7542
+*    @samyfarha @harinorbert @friedgab @vargala4 @erno-solymosi @animoku168 @DorikaJ @VagoLali @action87 @gotamas @Makako7542 @AttilaPataki1998
 
 # Owners of documentation
-/docs/    @samyfarha
+/docs/    @samyfarha @AttilaPataki1998
 *.md    @samyfarha
 
 # last matching pattern make precedence (next matchings would be ignored)
