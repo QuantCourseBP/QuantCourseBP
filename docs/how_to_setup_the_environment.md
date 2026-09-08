@@ -4,13 +4,16 @@
 
 *Table of content*:
 
-* [Setup your own workspace](#setup-your-own-workspace)
-* [How to setup Git?](#how-to-setup-git)
-    * [Option 1: How to clone with HTTPS](#option-1-how-to-clone-with-https) 
-    * [Option 2: How to setup SSH and clone with it](#option-2-how-to-setup-ssh-and-clone-with-it)
-* [How to setup the Python environment?](#how-to-setup-the-python-environment)
-    * [Create our virtual env](#create-our-virtual-env)
-* [Trouble-shooting](#trouble-shooting)
+- [How to setup the environment of QuantCourseBP?](#how-to-setup-the-environment-of-quantcoursebp)
+  - [Setup your own workspace](#setup-your-own-workspace)
+    - [Errors during linux install](#errors-during-linux-install)
+  - [How to setup Git?](#how-to-setup-git)
+    - [Option 1: How to clone with HTTPS](#option-1-how-to-clone-with-https)
+    - [Option 2: How to setup SSH and clone with it](#option-2-how-to-setup-ssh-and-clone-with-it)
+      - [Cloning our repository using SSH](#cloning-our-repository-using-ssh)
+  - [How to setup the Python environment?](#how-to-setup-the-python-environment)
+    - [Create our virtual env](#create-our-virtual-env)
+  - [Trouble-shooting](#trouble-shooting)
 
 ---
 
@@ -57,9 +60,16 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
 If the installation script failed, most likely you do not have a C/C++ compiler or make installed on your machine. Try installing them using your package manager, this could differ depending
 on your linux distribution.
 On <b>Debian</b>:
+
 ```bash
 $ sudo apt update
 $ sudo apt install build-essential
+```
+
+If you are not able to run the script, it might be because it does not have executable rights. To fix this, simply run:
+
+```bash
+$ chmod u+x install_python_linux.sh
 ```
 </details>
 <br>
