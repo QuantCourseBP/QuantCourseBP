@@ -7,7 +7,5 @@ call .\venv_quant_course_v312\Scripts\activate
 pip install -r requirements.txt
 python -m pip install --upgrade pip
 :: install jupyter kernel for virtual env
-ipython kernel install --user --name=venv_quant_course_v312
-:: install rise for notebook presentation mode
-jupyter-nbextension install rise --py --sys-prefix
+python -m ipykernel install --user --name venv_quant_course_v312 --display-name "Quant Course (Python 3.12)"
 deactivate

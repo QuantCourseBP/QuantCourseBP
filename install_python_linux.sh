@@ -30,6 +30,36 @@ echo "Python source: $SOURCE_DIR"
 echo "Install location: $INSTALL_DIR"
 echo
 
+install_dependencies() {
+    if command -v apt >/dev/null 2>&1; then
+        echo "Installing required build dependencies..."
+
+        sudo apt update
+        sudo apt install -y \
+            build-essential \
+            libssl-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libreadline-dev \
+            libsqlite3-dev \
+            libgdbm-dev \
+            libdb5.3-dev \
+            libbz2-dev \
+            libexpat1-dev \
+            liblzma-dev \
+            tk-dev \
+            uuid-dev \
+            libffi-dev
+    else
+        echo "Automatic dependency installation is only supported for Debian/Ubuntu."
+        echo "Please install the CPython build dependencies manually."
+        exit 1
+    fi
+}
+
+install_dependencies
+
 cd "$SOURCE_DIR"
 
 echo "Configuring Python..."

@@ -47,6 +47,8 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
         $ python3.12 --version
         ```
     * for MAC users:
+        * For MAC the Python foundation provides pre-built releases. The latest subversion for 3.12 is 3.12.10, which you can download here: https://www.python.org/downloads/release/python-31210/
+        * Simply double-click the downloaded installer and follow the install instructions
 2. **PyCharm**: (for all OS type) we recommend to download 2023.2 Community edition (which is free), all type of OS installers are available here: https://www.jetbrains.com/pycharm/download/other.html
     * we suggest to enable 'Create Associations .py' during installation, so .py files will open in PyCharm by default (especially, if you don't use other Python IDEs)
 3. **Git**: we recommend to download Git 2.39 (with latest subversion, e.g. 2.39.2) here: https://git-scm.com/download/win
@@ -204,13 +206,11 @@ If you have multiple Python versions, ....
 
 ### Create our virtual env
 
-In the root of your new local repository, you'll find a script called `create_env.bat` which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v39` which contains the build Python core and packages.
+In the root of your new local repository, you'll find a script called `create_env.bat` (for linux and mac users `create_env_linux.sh/create_env_mac.sh` respectively) which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v39` which contains the build Python core and packages.
 
 <img src="_images/create_env_bat.png" width="500">
 
 To activate the new virtual and and start Jupyter, simply run ´start_jupyter.bat´ on the root.
-
-Because of incompatibility issues, we keep using to old Jupyter notebook, but this brings up a warning each time you start the environment. Please, ignore this warning and don't update the Notebook 7.
 
 <img src="_images/jupyter1.png" width="600">
 
