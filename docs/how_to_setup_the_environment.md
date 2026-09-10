@@ -1,16 +1,19 @@
 # How to setup the environment of QuantCourseBP?
 
-*Editor*: Romsics, Erzsebet
+*Editor*: Romsics, Erzsebet; Pataki, Attila
 
 *Table of content*:
 
-* [Setup your own workspace](#setup-your-own-workspace)
-* [How to setup Git?](#how-to-setup-git)
-    * [Option 1: How to clone with HTTPS](#option-1-how-to-clone-with-https) 
-    * [Option 2: How to setup SSH and clone with it](#option-2-how-to-setup-ssh-and-clone-with-it)
-* [How to setup the Python environment?](#how-to-setup-the-python-environment)
-    * [Create our virtual env](#create-our-virtual-env)
-* [Trouble-shooting](#trouble-shooting)
+- [How to setup the environment of QuantCourseBP?](#how-to-setup-the-environment-of-quantcoursebp)
+  - [Setup your own workspace](#setup-your-own-workspace)
+    - [Errors during linux install](#errors-during-linux-install)
+  - [How to setup Git?](#how-to-setup-git)
+    - [Option 1: How to clone with HTTPS](#option-1-how-to-clone-with-https)
+    - [Option 2: How to setup SSH and clone with it](#option-2-how-to-setup-ssh-and-clone-with-it)
+      - [Cloning our repository using SSH](#cloning-our-repository-using-ssh)
+  - [How to setup the Python environment?](#how-to-setup-the-python-environment)
+    - [Create our virtual env](#create-our-virtual-env)
+  - [Trouble-shooting](#trouble-shooting)
 
 ---
 
@@ -19,12 +22,33 @@
 ## Setup your own workspace
 
 First of all, we need three installation: Python as an engine, PyCharm as an IDE (integrated development environment) for Python, and Git for version tracking. After all this setup, you'll be able to checkout our code repository to start your journey!
-1. **Python**: we use Python 3.9 
-    * for Windows users: Python 3.9 is supported only above Windows 7, and a recommended version 3.9.13 can be downloaded from here: https://www.python.org/downloads/release/python-3913/ In case, you would look for a different subversion, check this page: https://www.python.org/downloads/windows/ (we recommend to download in .exe extension for first time users)
-        * on the starting page of installer, it is recommended to check 'Add Python 3.9 to PATH' to be able to use *python* from command line
+1. **Python**: we use Python 3.12 
+    * for Windows users: Python 3.12 is supported only above Windows 7, and a recommended version 3.12.10 can be downloaded from here: https://www.python.org/downloads/release/python-31210/ In case, you would look for a different subversion, check this page: https://www.python.org/downloads/windows/ (we recommend to download in .exe extension for first time users)
+        * on the starting page of installer, it is recommended to check 'Add Python 3.12 to PATH' to be able to use *python* from command line
         * proceed with fast install with the 'Install Now' option (no customization is needed)
-    * for Linux Users:
+    * for Linux users: Python 3.12 can be downloaded for linux from the same link listed under the "for Windows users" section: https://www.python.org/downloads/release/python-31210/. If you would like to install a different subversion, check out this page: https://www.python.org/downloads/
+        * most linux distributions already have a system wide Python present, you can check whether you have one by running the following command:
+        ```bash
+        $ which python3
+        ```
+        if the command did give you a result, you can check your system Python version with
+        ```bash
+        $ python3 --version
+        ```
+        * if the result is Python 3.12.xx or something similar, then you are good to go, and don't need to install anything else
+        * if you would like to install a secondary version (a different release than what is provided with your linux distro) of Python on linux, first, download the appropriate version for this course, following this link: https://www.python.org/downloads/release/python-31214/
+        * extract the contents of the downloaded file
+        * run the installer script provided with this repo in the following way:
+        ```bash
+        $ ./install_python_linux.sh <absolute_path_to_extracted_directory>
+        ```
+        * check if the installation was successful with
+        ```bash
+        $ python3.12 --version
+        ```
     * for MAC users:
+        * For MAC the Python foundation provides pre-built releases. The latest subversion for 3.12 is 3.12.10, which you can download here: https://www.python.org/downloads/release/python-31210/
+        * Simply double-click the downloaded installer and follow the install instructions
 2. **PyCharm**: (for all OS type) we recommend to download 2023.2 Community edition (which is free), all type of OS installers are available here: https://www.jetbrains.com/pycharm/download/other.html
     * we suggest to enable 'Create Associations .py' during installation, so .py files will open in PyCharm by default (especially, if you don't use other Python IDEs)
 3. **Git**: we recommend to download Git 2.39 (with latest subversion, e.g. 2.39.2) here: https://git-scm.com/download/win
@@ -32,6 +56,24 @@ First of all, we need three installation: Python as an engine, PyCharm as an IDE
         * On page _Choosing the default editor used by Git_: select Notepad or Notepad++ (if you have it). We only recommend to use the default editor Vim, if you already know how to use it, otherwise it is pretty hard to learn. (it is quite an ancient editor, 30+ years old)
         * On page _Adjusting your PATH environment_: select 'Git from the command line and also from 3rd-party software', this will allow you to use Windows Command Prompt besides Git Bash (it is recommended for those who are more familiar with Windows, and would use Ctrl-C/Ctrl-V and Windows commands).
 
+### Errors during linux install
+<details>
+<summary> <b>Click here for details on troubleshooting.</b></summary>
+If the installation script failed, most likely you do not have a C/C++ compiler or make installed on your machine. Try installing them using your package manager, this could differ depending
+on your linux distribution.
+On <b>Debian</b>:
+
+```bash
+$ sudo apt update
+$ sudo apt install build-essential
+```
+
+If you are not able to run the script, it might be because it does not have executable rights. To fix this, simply run:
+
+```bash
+$ chmod u+x install_python_linux.sh
+```
+</details>
 <br>
 
 ## How to setup Git?
@@ -164,13 +206,11 @@ If you have multiple Python versions, ....
 
 ### Create our virtual env
 
-In the root of your new local repository, you'll find a script called `create_env.bat` which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v39` which contains the build Python core and packages.
+In the root of your new local repository, you'll find a script called `create_env.bat` (for linux and mac users `create_env_linux.sh/create_env_mac.sh` respectively) which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v312` which contains the build Python core and packages.
 
 <img src="_images/create_env_bat.png" width="500">
 
 To activate the new virtual and and start Jupyter, simply run ´start_jupyter.bat´ on the root.
-
-Because of incompatibility issues, we keep using to old Jupyter notebook, but this brings up a warning each time you start the environment. Please, ignore this warning and don't update the Notebook 7.
 
 <img src="_images/jupyter1.png" width="600">
 
