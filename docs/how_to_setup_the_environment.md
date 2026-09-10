@@ -23,10 +23,10 @@
 
 First of all, we need three installation: Python as an engine, PyCharm as an IDE (integrated development environment) for Python, and Git for version tracking. After all this setup, you'll be able to checkout our code repository to start your journey!
 1. **Python**: we use Python 3.12 
-    * for Windows users: Python 3.12 is supported only above Windows 7, and a recommended version 3.12.14 can be downloaded from here: https://www.python.org/downloads/release/python-31214/ In case, you would look for a different subversion, check this page: https://www.python.org/downloads/windows/ (we recommend to download in .exe extension for first time users)
+    * for Windows users: Python 3.12 is supported only above Windows 7, and a recommended version 3.12.10 can be downloaded from here: https://www.python.org/downloads/release/python-31210/ In case, you would look for a different subversion, check this page: https://www.python.org/downloads/windows/ (we recommend to download in .exe extension for first time users)
         * on the starting page of installer, it is recommended to check 'Add Python 3.12 to PATH' to be able to use *python* from command line
         * proceed with fast install with the 'Install Now' option (no customization is needed)
-    * for Linux users: Python 3.12 can be downloaded for linux from the same link listed under the "for Windows users" section: https://www.python.org/downloads/release/python-31214/. If you would like to install a different subversion, check out this page: https://www.python.org/downloads/
+    * for Linux users: Python 3.12 can be downloaded for linux from the same link listed under the "for Windows users" section: https://www.python.org/downloads/release/python-31210/. If you would like to install a different subversion, check out this page: https://www.python.org/downloads/
         * most linux distributions already have a system wide Python present, you can check whether you have one by running the following command:
         ```bash
         $ which python3
@@ -206,7 +206,7 @@ If you have multiple Python versions, ....
 
 ### Create our virtual env
 
-In the root of your new local repository, you'll find a script called `create_env.bat` (for linux and mac users `create_env_linux.sh/create_env_mac.sh` respectively) which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v39` which contains the build Python core and packages.
+In the root of your new local repository, you'll find a script called `create_env.bat` (for linux and mac users `create_env_linux.sh/create_env_mac.sh` respectively) which is going to build the whole virtual environment for you. Open a command line from the repository, and run it. It will create a new dir called `venv_quant_course_v312` which contains the build Python core and packages.
 
 <img src="_images/create_env_bat.png" width="500">
 

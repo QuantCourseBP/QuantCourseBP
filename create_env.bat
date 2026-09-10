@@ -1,6 +1,6 @@
 @echo off
 :: create virutal env folder
-python -m venv --clear venv_quant_course_v312
+py -3.12 -m venv --clear venv_quant_course_v312
 :: activate empty env
 call .\venv_quant_course_v312\Scripts\activate
 :: install required Python packages
