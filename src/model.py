@@ -11,6 +11,7 @@ class MarketModel(ABC):
         self.risk_free_rate: float = MarketData.get_risk_free_rate()
         self.spot: float = MarketData.get_spot()[self.underlying]
         self.volgrid: VolGrid = MarketData.get_volgrid()[self.underlying]
+        #testing git
 
     def bump_rate(self, bump_size: float) -> None:
         self.risk_free_rate += bump_size
