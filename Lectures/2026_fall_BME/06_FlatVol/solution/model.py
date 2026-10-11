@@ -65,5 +65,8 @@ class FlatVolModel(MarketModel):
         :param expiry: Expiry of option contract.
         :return: Implied volatility.
         """
+        # Parametrizing the surface via strike results in a "sticky" strike numerical delta/gamma.
+        # i.e. implied vol remains the same in the bumped environment.
+        # If we parametrize via moneyness (sticky moneyness), then the implied vol does change in the bumped state.
         coordinate = np.array([(strike, expiry)])
         return self.volgrid.get_vol(coordinate)[0]
