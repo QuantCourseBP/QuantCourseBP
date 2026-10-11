@@ -19,18 +19,11 @@ class Params:
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
     valuation_time: float = 0.0
-    relative_bump_size: float = 0.01
 
     def __init__(self, contract: Contract, model: MarketModel, params: Params) -> None:
         self.contract: Contract = contract
         self.model: MarketModel = model
         self.params: Params = params
-
-    @classmethod
-    def create_pricer(cls, contract: Contract, model: MarketModel, params: Params) -> Pricer:
-        instance = cls.__new__(cls)
-        instance.__init__(contract, model, params)
-        return instance
 
     @abstractmethod
     def calc_fair_value(self) -> float:
@@ -49,43 +42,17 @@ class Pricer(ABC):
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        strike = self.contract.strike
-        expiry = self.contract.expiry
-        vol = self.model.get_vol(strike, expiry)
-        bump_size = self.relative_bump_size * vol
-        bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
-            model = copy.deepcopy(self.model)
-            model.bump_volgrid(b)
-            bumped_pricer = self.create_pricer(self.contract, model, self.params)
-            bumped_fair_values.append(bumped_pricer.calc_fair_value())
-            del bumped_pricer
-            del model
-        return (bumped_fair_values[0] - bumped_fair_values[1]) / (2 * bump_size)
+        return np.nan
 
     def calc_theta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = 1.0 / 365.0
-        bumped_pricer = copy.deepcopy(self)
-        bumped_pricer.valuation_time += bump_size
-        bumped_fair_value = bumped_pricer.calc_fair_value()
-        del bumped_pricer
-        return (bumped_fair_value - self.calc_fair_value()) / bump_size
+        return np.nan
 
     def calc_rho(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.relative_bump_size * self.model.risk_free_rate
-        bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
-            model = copy.deepcopy(self.model)
-            model.bump_rate(b)
-            bumped_pricer = self.create_pricer(self.contract, model, self.params)
-            bumped_fair_values.append(bumped_pricer.calc_fair_value())
-            del bumped_pricer
-            del model
-        return (bumped_fair_values[0] - bumped_fair_values[1]) / (2 * bump_size)
+        return np.nan
 
     def raise_unsupported_greek_method_error(
             self,
@@ -196,7 +163,7 @@ class EuropeanAnalyticPricer(Pricer):
         expiry = self.contract.expiry
         time_to_expiry = expiry - self.valuation_time
         spot = self.model.spot
-        vol = self.model.get_vol(strike, expiry)
+        vol = self.model.vol
         rate = self.model.risk_free_rate
         df = self.model.calc_df(time_to_expiry)
         d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
@@ -215,7 +182,7 @@ class EuropeanAnalyticPricer(Pricer):
             strike = self.contract.strike
             expiry = self.contract.expiry
             time_to_expiry = expiry - self.valuation_time
-            vol = self.model.get_vol(strike, expiry)
+            vol = self.model.vol
             rate = self.model.risk_free_rate
             d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
             if self.contract.derivative_type == PutCallFwd.CALL:
@@ -257,7 +224,7 @@ class EuropeanAnalyticPricer(Pricer):
             strike = self.contract.strike
             expiry = self.contract.expiry
             time_to_expiry = expiry - self.valuation_time
-            vol = self.model.get_vol(strike, expiry)
+            vol = self.model.vol
             rate = self.model.risk_free_rate
             df = self.model.calc_df(time_to_expiry)
             d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
@@ -278,7 +245,7 @@ class EuropeanAnalyticPricer(Pricer):
             spot = self.model.spot
             expiry = self.contract.expiry
             time_to_expiry = expiry - self.valuation_time
-            vol = self.model.get_vol(strike, expiry)
+            vol = self.model.vol
             rate = self.model.risk_free_rate
             df = self.model.calc_df(time_to_expiry)
             d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
@@ -304,7 +271,7 @@ class EuropeanAnalyticPricer(Pricer):
             expiry = self.contract.expiry
             time_to_expiry = expiry - self.valuation_time
             spot = self.model.spot
-            vol = self.model.get_vol(strike, expiry)
+            vol = self.model.vol
             rate = self.model.risk_free_rate
             df = self.model.calc_df(time_to_expiry)
             d2 = EuropeanAnalyticPricer.calc_d2(spot / strike, vol, rate, time_to_expiry)
