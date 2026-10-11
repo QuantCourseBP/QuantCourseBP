@@ -204,7 +204,7 @@ class EuropeanAnalyticPricer(Pricer):
             strike = self.contract.strike
             expiry = self.contract.expiry
             time_to_expiry = expiry - self.valuation_time
-            vol = self.model.get_vol(strike, expiry)
+            vol = self.model.vol
             rate = self.model.risk_free_rate
             d1 = EuropeanAnalyticPricer.calc_d1(spot / strike, vol, rate, time_to_expiry)
             if self.contract.derivative_type in (PutCallFwd.CALL, PutCallFwd.PUT):
