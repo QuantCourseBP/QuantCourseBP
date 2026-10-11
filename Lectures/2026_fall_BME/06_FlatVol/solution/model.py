@@ -16,6 +16,10 @@ class MarketModel(ABC):
         self.spot: float = MarketData.get_spot()[self.underlying]
         self.volgrid: VolGrid = MarketData.get_volgrid()[self.underlying]
 
+    @abstractmethod
+    def get_vol(self, strike: float, expiry: float) -> float:
+        pass
+
     def bump_rate(self, bump_size: float) -> None:
         self.risk_free_rate += bump_size
 
@@ -27,10 +31,6 @@ class MarketModel(ABC):
 
     def calc_df(self, tenor: float) -> float:
         return np.exp(-1.0 * self.risk_free_rate * tenor)
-
-    @abstractmethod
-    def get_vol(self, strike: float, expiry: float) -> float:
-        pass
 
 
 class BSVolModel(MarketModel):
