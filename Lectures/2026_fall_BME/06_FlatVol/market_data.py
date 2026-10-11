@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 class MarketData:
-    risk_free_rate = 0.05
+    risk_free_rate: float = 0.05
     spot: dict[Stock, float] = {
         Stock.BLUECHIP_BANK: 130.17,
         Stock.TIPTOP_SOLUTIONS: 177.32
