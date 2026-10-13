@@ -28,8 +28,7 @@ class Pricer(ABC):
 
     @classmethod
     def create_pricer(cls, contract: Contract, model: MarketModel, params: Params) -> Pricer:
-        instance = cls.__new__(cls)
-        instance.__init__(contract, model, params)
+        instance = cls(contract, model, params)
         return instance
 
     @abstractmethod
