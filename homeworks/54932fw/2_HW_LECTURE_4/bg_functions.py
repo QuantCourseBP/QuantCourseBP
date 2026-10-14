@@ -1,3 +1,9 @@
+# change # 1  (part 2: imports added so that this file can be imported as a module)
+import numpy as np
+from prof_tree import create_spot_tree, create_discounted_price_tree, calcBalancedDownStep
+# end change # 1
+
+
 def balanced_tree_call_price(spot: float, strike: float, maturity: float, steps: int,
                              df_annual: float, spot_mult_up: float) -> float:
     """Price of a European call in a Balanced Binomial Tree (p_up = p_down = 0.5)."""

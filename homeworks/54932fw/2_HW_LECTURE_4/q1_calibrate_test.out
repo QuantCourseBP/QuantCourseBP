@@ -1,0 +1,4 @@
+target price (Black-Scholes of Homework 1, sigma = 0.2): 0.105195
+N = 1: calibrate u = 1.2214640224,  brentq u = 1.2214640224
+ValueError: price 0.600000 not attainable: it must lie in (0.050000, 0.525000)
+ValueError: price 0.040000 not attainable: it must lie in (0.050000, 0.525000)

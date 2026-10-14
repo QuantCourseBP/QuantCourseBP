@@ -1,0 +1,15 @@
+market: S = 130.17, vol = 0.381, r = 0.05;  K = 130.0, T = 1.0
+S_T = 129.0: long digital call pays 0.0, short digital put pays -1.0
+S_T = 131.0: long digital call pays 1.0, short digital put pays 0.0
+d2 = -0.055836, DF = 0.951229
+digital call = 0.454437, digital put = 0.496793, call + put = 0.951229 (DF = 0.951229)
+h = 10.00: 0.417385 <= C_d = 0.454437 <= 0.493716   True
+h =  1.00: 0.450623 <= C_d = 0.454437 <= 0.458273   True
+h =  0.10: 0.454054 <= C_d = 0.454437 <= 0.454819   True
+h =  0.01: 0.454398 <= C_d = 0.454437 <= 0.454475   True
+             call        put  call bump
+delta    0.007640  -0.007640   0.007640
+gamma   -0.000050   0.000050  -0.000050
+vega    -0.323367   0.323367  -0.323367
+theta    0.034599   0.012962   0.034599
+rho      0.540037  -1.491267   0.540037
