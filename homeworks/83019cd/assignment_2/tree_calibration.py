@@ -82,8 +82,8 @@ def balanced_call_price(spot: float, spot_mult_up: float, steps: int, K: float,
                         expiry: float, rate: float) -> float:
     """Price with p_up=p_down=0.5 and a constant continuously compounded rate.
 
-    u=m and u=2m are included for calibration boundary evaluation. Production
-    calibration returns an interior solution with 0 < d < m < u < 2m.
+    u=m and u=2m are included for calibration boundary evaluation. Calibration
+    returns an interior solution with 0 < d < m < u < 2m.
     """
     _validate_contract(spot, steps, K, expiry, rate)
     _finite_scalar('spot_mult_up', spot_mult_up)
