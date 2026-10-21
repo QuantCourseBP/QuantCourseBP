@@ -1,0 +1,9 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\jhmso\OneDrive\Dokumentumok\BME\Financial Processes\QuantCourseBP\homeworks\04918ef\Assignment_3
+plugins: anyio-4.15.1
+collected 48 items
+
+test_digital_pricer.py ................................................  [100%]
+
+============================= 48 passed in 1.11s ==============================
