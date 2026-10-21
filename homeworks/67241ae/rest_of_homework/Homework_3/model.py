@@ -1,6 +1,6 @@
 from __future__ import annotations
-from market_data import *
-from src.enums import *
+from .market_data import *
+from .enums import *
 import numpy as np
 
 

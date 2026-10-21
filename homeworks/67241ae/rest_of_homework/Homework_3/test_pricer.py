@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from pricer import *
+from .pricer import *
 
 
 # TASK:

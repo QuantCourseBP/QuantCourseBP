@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
+import numpy as np
 from scipy.stats import norm
-from src.enums import *
-from contract import *
-from model import *
 
-
+from .enums import *
+from .contract import *
+from .model import *
 # TASK:
 # 1. Implement calc_fair_value() method in EuropeanAnalyticPricer.
 
@@ -219,3 +220,66 @@ class EuropeanAnalyticPricer(Pricer):
         else:
             self.contract.raise_incorrect_derivative_type_error()
         return self.contract.direction * greek
+
+class EuropeanDigitalAnalyticPricer(Pricer):
+    """Black-Scholes unit cash-or-nothing option, without dividends.
+
+    Vega/rho use unit input changes; theta uses calendar years.
+    Greeks require positive time to expiry and volatility.
+    """
+
+    def __init__(self, contract, model, params):
+        if not isinstance(contract, EuropeanDigitalContract):
+            raise TypeError("Contract must be EuropeanDigitalContract.")
+        super().__init__(contract, model, params)
+
+    def _inputs(self):
+        S, K = self.model.spot, self.contract.strike
+        sigma, r = self.model.vol, self.model.risk_free_rate
+        tau = self.contract.expiry - self.valuation_time
+        if not np.all(np.isfinite([S, K, sigma, r, tau])):
+            raise ValueError("Pricing inputs must be finite.")
+        if S <= 0 or K <= 0 or sigma < 0 or tau < 0:
+            raise ValueError("Require S,K > 0 and volatility,time to expiry >= 0.")
+        q = 1.0 if self.contract.derivative_type == PutCallFwd.CALL else -1.0
+        return S, K, sigma, r, tau, q
+
+    def _terms(self):
+        S, K, sigma, r, tau, q = self._inputs()
+        if tau == 0 or sigma == 0:
+            raise ValueError("Analytic Greeks require positive time and volatility.")
+        b = sigma * np.sqrt(tau)
+        d2 = (np.log(S / K) + (r - sigma**2 / 2) * tau) / b
+        d1 = d2 + b
+        D = self.model.calc_df(tau)
+        return S, sigma, r, tau, q, b, d1, d2, D
+
+    def calc_fair_value(self):
+        S, K, sigma, r, tau, q = self._inputs()
+        D = self.model.calc_df(tau)
+        if tau == 0 or sigma == 0:
+            terminal = S * np.exp(r * tau)
+            return self.contract.direction * D * float(q * (terminal - K) > 0)
+        *_, d2, D = self._terms()
+        return self.contract.direction * D * norm.cdf(q * d2)
+
+    def calc_delta(self):
+        S, sigma, r, tau, q, b, d1, d2, D = self._terms()
+        return self.contract.direction * q * D * norm.pdf(d2) / (S * b)
+
+    def calc_gamma(self):
+        S, sigma, r, tau, q, b, d1, d2, D = self._terms()
+        return -self.contract.direction * q * D * norm.pdf(d2) * (1 + d2 / b) / (S**2 * b)
+
+    def calc_vega(self):
+        S, sigma, r, tau, q, b, d1, d2, D = self._terms()
+        return -self.contract.direction * q * D * norm.pdf(d2) * d1 / sigma
+
+    def calc_theta(self):
+        S, sigma, r, tau, q, b, d1, d2, D = self._terms()
+        d2_dtau = (r - sigma**2 / 2) / b - d2 / (2 * tau)
+        return r * self.calc_fair_value() - self.contract.direction * q * D * norm.pdf(d2) * d2_dtau
+
+    def calc_rho(self):
+        S, sigma, r, tau, q, b, d1, d2, D = self._terms()
+        return -tau * self.calc_fair_value() + self.contract.direction * q * D * norm.pdf(d2) * np.sqrt(tau) / sigma

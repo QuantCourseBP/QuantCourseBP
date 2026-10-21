@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from src.enums import *
+from .enums import *
 
 
 # TASK:
@@ -66,11 +66,15 @@ class ForwardContract(Contract):
 
 
 class EuropeanContract(Contract):
-    def __init__(self, underlying: Stock, derivative_type: PutCallFwd, long_short: LongShort, strike: float,
-                 expiry: float) -> None:
+    def __init__(self, underlying: Stock, derivative_type: PutCallFwd,
+                 long_short: LongShort, strike: float, expiry: float) -> None:
+
+        super().__init__(
+            underlying, derivative_type, long_short, strike, expiry
+        )
+
         if derivative_type not in [PutCallFwd.CALL, PutCallFwd.PUT]:
             self.raise_incorrect_derivative_type_error()
-        super().__init__(underlying, derivative_type, long_short, strike, expiry)
 
     def get_timeline(self) -> list[float]:
         return [round(self.expiry, self.timeline_digits)]
@@ -85,3 +89,21 @@ class EuropeanContract(Contract):
             return self.direction * max(self.strike - spot[t], 0)
         else:
             self.raise_incorrect_derivative_type_error()
+
+class EuropeanDigitalContract(EuropeanContract):
+    """Pays one unit if the option finishes strictly in the money."""
+
+    def payoff(self, spot: dict[float, float]) -> float:
+        t = self.get_timeline()[0]
+
+        if t not in spot:
+            self.raise_missing_spot_error(list(spot.keys()))
+
+        if self.derivative_type == PutCallFwd.CALL:
+            pays = spot[t] > self.strike
+        elif self.derivative_type == PutCallFwd.PUT:
+            pays = spot[t] < self.strike
+        else:
+            self.raise_incorrect_derivative_type_error()
+
+        return self.direction * float(pays)

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from src.enums import *
+from .enums import *
 
 
 # TASK:
