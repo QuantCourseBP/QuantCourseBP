@@ -1,0 +1,18 @@
+ATM call: S = K = 130.17, T = 1, vol = 0.380830, value = 22.515663
+analytic: delta = 0.626163, gamma = 0.007642
+
+default: CENTRAL, RELATIVE, relative_bump_size = 0.01
+bump: delta = 0.626132, gamma = 0.007642   (lecture: 0.626132, 0.007642)
+
+method   bump            h      delta      error      gamma      error
+FORWARD  ABSOLUTE   1.0000   0.629966   3.80e-03   0.007533  -1.09e-04
+BACKWARD ABSOLUTE   1.0000   0.622324  -3.84e-03   0.007750   1.08e-04
+CENTRAL  ABSOLUTE   1.0000   0.626145  -1.80e-05   0.007642  -6.19e-08
+FORWARD  RELATIVE   1.3017   0.631106   4.94e-03   0.007500  -1.42e-04
+BACKWARD RELATIVE   1.3017   0.621159  -5.00e-03   0.007782   1.40e-04
+CENTRAL  RELATIVE   1.3017   0.626132  -3.06e-05   0.007642  -1.05e-07
+ABSOLUTE (fwd + bwd)/2 - central =  0.0e+00;  fwd error = 0.003803, h/2 * gamma = 0.003821
+RELATIVE (fwd + bwd)/2 - central =  0.0e+00;  fwd error = 0.004943, h/2 * gamma = 0.004974
+
+instance: FORWARD, other pricer: CENTRAL, class: CENTRAL
+error: Unsupported FDMethod SIDEWAYS
