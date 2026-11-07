@@ -10,8 +10,12 @@ from src.model import *
 from src.numerical_method import *
 
 class Pricer(ABC):
-    # Only for theta calculation via bump and revaluation
     valuation_time: float = 0.0
+
+    finite_difference_method: FiniteDifferenceMethod = FiniteDifferenceMethod.CENTRAL
+    bump_size_method: BumpSizeMethod = BumpSizeMethod.RELATIVE
+    bump_size: float = 0.01
+
     relative_bump_size: float = 0.01
 
     def __init__(self, contract: Contract, model: MarketModel, params: Params) -> None:
@@ -36,30 +40,66 @@ class Pricer(ABC):
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.relative_bump_size * self.model.spot
-        bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
-            model = copy.deepcopy(self.model)
-            model.bump_spot(b)
-            bumped_pricer = self.create_pricer(self.contract, model, self.params)
-            bumped_fair_values.append(bumped_pricer.calc_fair_value())
-            del bumped_pricer
-            del model
-        return (bumped_fair_values[0] - bumped_fair_values[1]) / (2 * bump_size)
+
+        h = self.bump_size * self.model.spot if self.bump_size_method == BumpSizeMethod.RELATIVE \
+            else self.bump_size
+
+        if h <= 0:
+            raise ValueError("Bump size must be positive.")
+
+        value_0 = self.calc_fair_value()
+
+        if self.finite_difference_method == FiniteDifferenceMethod.FORWARD:
+            value_up = self._calc_fair_value_with_spot_bump(h)
+            return (value_up - value_0) / h
+
+        elif self.finite_difference_method == FiniteDifferenceMethod.BACKWARD:
+            value_down = self._calc_fair_value_with_spot_bump(-h)
+            return (value_0 - value_down) / h
+
+        elif self.finite_difference_method == FiniteDifferenceMethod.CENTRAL:
+            value_up = self._calc_fair_value_with_spot_bump(h)
+            value_down = self._calc_fair_value_with_spot_bump(-h)
+            return (value_up - value_down) / (2 * h)
+
+        else:
+            raise ValueError("Unknown finite difference method.")
+
+    def _calc_fair_value_with_spot_bump(self, bump: float) -> float:
+        model = copy.deepcopy(self.model)
+        model.bump_spot(bump)
+        bumped_pricer = self.create_pricer(self.contract, model, self.params)
+        return bumped_pricer.calc_fair_value()
 
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.relative_bump_size * self.model.spot
-        bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
-            model = copy.deepcopy(self.model)
-            model.bump_spot(b)
-            bumped_pricer = self.create_pricer(self.contract, model, self.params)
-            bumped_fair_values.append(bumped_pricer.calc_fair_value())
-            del bumped_pricer
-            del model
-        return (bumped_fair_values[0] - 2 * self.calc_fair_value() + bumped_fair_values[1]) / (bump_size ** 2)
+
+        h = self.bump_size * self.model.spot if self.bump_size_method == BumpSizeMethod.RELATIVE \
+            else self.bump_size
+
+        if h <= 0:
+            raise ValueError("Bump size must be positive.")
+
+        value_0 = self.calc_fair_value()
+
+        if self.finite_difference_method == FiniteDifferenceMethod.FORWARD:
+            value_1 = self._calc_fair_value_with_spot_bump(h)
+            value_2 = self._calc_fair_value_with_spot_bump(2 * h)
+            return (value_2 - 2 * value_1 + value_0) / h**2
+
+        elif self.finite_difference_method == FiniteDifferenceMethod.BACKWARD:
+            value_1 = self._calc_fair_value_with_spot_bump(-h)
+            value_2 = self._calc_fair_value_with_spot_bump(-2 * h)
+            return (value_0 - 2 * value_1 + value_2) / h**2
+
+        elif self.finite_difference_method == FiniteDifferenceMethod.CENTRAL:
+            value_up = self._calc_fair_value_with_spot_bump(h)
+            value_down = self._calc_fair_value_with_spot_bump(-h)
+            return (value_up - 2 * value_0 + value_down) / h**2
+
+        else:
+            raise ValueError("Unknown finite difference method.")
 
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
@@ -580,7 +620,7 @@ class BarrierAnalyticPricer(Pricer):
                     return price_bs - price_dic
         else:
             self.raise_pricer_not_implemented_error()
- 
+
 
 class BarrierBrownianBridgePricer(Pricer):
     def __init__(self, contract: EuropeanBarrierContract, model: MarketModel, params: Params):
