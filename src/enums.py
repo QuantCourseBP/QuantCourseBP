@@ -28,6 +28,17 @@ class GreekMethod(str, Enum):
     BUMP: str = 'BUMP'
 
 
+class FiniteDifferenceMethod(str, Enum):  # finite difference scheme used in bump-and-revalue greeks
+    FORWARD: str = 'FORWARD'
+    BACKWARD: str = 'BACKWARD'
+    CENTRAL: str = 'CENTRAL'
+
+
+class BumpType(str, Enum):  # is the spot bump size absolute (currency units) or relative (fraction of spot)
+    ABSOLUTE: str = 'ABSOLUTE'
+    RELATIVE: str = 'RELATIVE'
+
+
 class LongShort(str, Enum):
     LONG: str = 'LONG'
     SHORT: str = 'SHORT'
