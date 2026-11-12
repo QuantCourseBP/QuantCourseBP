@@ -15,11 +15,21 @@ from .model import *
 class Params:
     pass
 
+class FDEMethod:
+    FORWARD : str = 'FORWARD'
+    BACKWARD : str = 'BACKWARD'
+    CENTRAL : str = 'CENTRAL'
+
+class BMPSize:
+    ABSOLUTE : str = 'ABSOLUTE'
+    RELATIVE : str = 'RELATIVE'
 
 class Pricer(ABC):
     # Only for theta calculation via bump and revaluation
     valuation_time: float = 0.0
     relative_bump_size: float = 0.01
+    fde_method : FDEMethod = FDEMethod.CENTRAL
+    bump_size : BMPSize = BMPSize.RELATIVE
 
     def __init__(self, contract: Contract, model: MarketModel, params: Params) -> None:
         self.contract: Contract = contract
@@ -35,33 +45,52 @@ class Pricer(ABC):
     def calc_fair_value(self) -> float:
         pass
 
+    def get_boundaries(self):
+        # === bump size ===
+        if self.bump_size == BMPSize.RELATIVE:
+            bump_size = self.relative_bump_size * self.model.spot
+        else:
+            bump_size = self.relative_bump_size
+
+        # === boundaries ===
+        if self.fde_method == FDEMethod.CENTRAL:
+            return 2*bump_size, (-bump_size, bump_size)
+        elif self.fde_method == FDEMethod.FORWARD:
+            return bump_size, (0, bump_size)
+        elif self.fde_method == FDEMethod.BACKWARD:
+            return bump_size, (-bump_size, 0)
+        else:
+            raise RuntimeError(f"FDE method {self.fde_method} not recognized")
+
     def calc_delta(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.relative_bump_size * self.model.spot
+
+        delta, boundaries = self.get_boundaries()
         bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
+        for b in boundaries:
             model_to_bump = copy.deepcopy(self.model)
             model_to_bump.bump_spot(b)
             bumped_pricer = self.create_pricer(self.contract, model_to_bump, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model_to_bump
-        return (bumped_fair_values[0] - bumped_fair_values[1]) / (2 * bump_size)
+        return (bumped_fair_values[1] - bumped_fair_values[0]) / delta
 
     def calc_gamma(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
             self.raise_unsupported_greek_method_error(method, (GreekMethod.BUMP,))
-        bump_size = self.relative_bump_size * self.model.spot
+
+        delta, boundaries = self.get_boundaries()
         bumped_fair_values = list()
-        for b in (bump_size, -bump_size):
+        for b in boundaries:
             model_to_bump = copy.deepcopy(self.model)
             model_to_bump.bump_spot(b)
             bumped_pricer = self.create_pricer(self.contract, model_to_bump, self.params)
             bumped_fair_values.append(bumped_pricer.calc_fair_value())
             del bumped_pricer
             del model_to_bump
-        return (bumped_fair_values[0] - 2 * self.calc_fair_value() + bumped_fair_values[1]) / (bump_size ** 2)
+        return (bumped_fair_values[0] - 2 * self.calc_fair_value() + bumped_fair_values[1]) / delta
 
     def calc_vega(self, method: GreekMethod) -> float:
         if method != GreekMethod.BUMP:
